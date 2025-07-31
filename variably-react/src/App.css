@@ -1,0 +1,129 @@
+/* shadcn/ui compatible styles */
+#root {
+  width: 100%;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Container improvements for better responsiveness */
+.container {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .container {
+    padding: 0 1.5rem;
+  }
+}
+
+@media (min-width: 768px) {
+  .container {
+    padding: 0 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .container {
+    padding: 0 2.5rem;
+  }
+}
+
+@media (min-width: 1280px) {
+  .container {
+    padding: 0 3rem;
+  }
+}
+
+/* Main layout improvements */
+.min-h-screen {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header improvements */
+header {
+  flex-shrink: 0;
+}
+
+/* Main content area improvements */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0; /* Important for flex child */
+}
+
+/* Sidebar improvements */
+aside {
+  flex-shrink: 0;
+}
+
+/* Grid layout improvements */
+.md\:grid {
+  display: grid;
+  min-height: 0; /* Important for grid items */
+}
+
+/* Responsive spacing improvements */
+.space-y-4 > * + * {
+  margin-top: 1rem;
+}
+
+@media (min-width: 768px) {
+  .space-y-4 > * + * {
+    margin-top: 1.5rem;
+  }
+}
+
+/* Card improvements for better spacing */
+.card {
+  height: fit-content;
+}
+
+/* Drop zone improvements */
+.border-dashed {
+  border-style: dashed;
+  transition: all 0.2s ease-in-out;
+}
+
+.border-dashed:hover {
+  border-color: hsl(var(--primary));
+  transform: scale(1.01);
+}
+
+/* Feature cards improvements */
+.bg-muted\/30 {
+  background-color: hsl(var(--muted) / 0.3);
+  backdrop-filter: blur(8px);
+}
+
+/* Responsive text improvements */
+@media (max-width: 640px) {
+  .text-2xl {
+    font-size: 1.5rem;
+    line-height: 2rem;
+  }
+  
+  .text-3xl {
+    font-size: 1.875rem;
+    line-height: 2.25rem;
+  }
+}
+
+/* Button improvements */
+button {
+  transition: all 0.2s ease-in-out;
+}
+
+button:hover {
+  transform: translateY(-1px);
+}
+
+/* Remove old Vite template styles that conflict with shadcn/ui */

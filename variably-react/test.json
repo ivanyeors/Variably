@@ -1,0 +1,88 @@
+{
+  "name": "Sample JSON Data",
+  "version": "1.0.0",
+  "description": "A sample JSON file with various data types for testing the structure viewer",
+  "metadata": {
+    "created": "2024-01-15T10:30:00Z",
+    "author": "Test User",
+    "tags": ["sample", "test", "json"]
+  },
+  "settings": {
+    "enabled": true,
+    "maxItems": 100,
+    "timeout": 5000,
+    "features": {
+      "search": true,
+      "filter": true,
+      "sort": false
+    }
+  },
+  "data": {
+    "users": [
+      {
+        "id": 1,
+        "name": "John Doe",
+        "email": "john@example.com",
+        "active": true,
+        "preferences": {
+          "theme": "dark",
+          "notifications": true,
+          "language": "en"
+        }
+      },
+      {
+        "id": 2,
+        "name": "Jane Smith",
+        "email": "jane@example.com",
+        "active": false,
+        "preferences": {
+          "theme": "light",
+          "notifications": false,
+          "language": "es"
+        }
+      }
+    ],
+    "products": [
+      {
+        "id": "prod-001",
+        "name": "Widget A",
+        "price": 29.99,
+        "inStock": true,
+        "categories": ["electronics", "gadgets"]
+      },
+      {
+        "id": "prod-002",
+        "name": "Widget B",
+        "price": 49.99,
+        "inStock": false,
+        "categories": ["electronics", "premium"]
+      }
+    ]
+  },
+  "statistics": {
+    "totalUsers": 2,
+    "totalProducts": 2,
+    "averagePrice": 39.99,
+    "activeUsers": 1
+  },
+  "nested": {
+    "level1": {
+      "level2": {
+        "level3": {
+          "level4": {
+            "deepValue": "This is very deep!"
+          }
+        }
+      }
+    }
+  },
+  "arrays": {
+    "simple": [1, 2, 3, 4, 5],
+    "mixed": ["string", 123, true, null, {"nested": "object"}],
+    "empty": []
+  },
+  "nullValues": {
+    "explicitNull": null,
+    "undefined": undefined
+  }
+} 
