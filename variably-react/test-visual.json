@@ -1,0 +1,25 @@
+{
+  "name": "Test Visual Editor",
+  "version": "1.0.0",
+  "description": "A test file for the visual JSON editor",
+  "features": {
+    "dragAndDrop": true,
+    "visualEditing": true,
+    "realTimeValidation": true
+  },
+  "settings": {
+    "theme": "dark",
+    "autoSave": true,
+    "showLineNumbers": true
+  },
+  "dependencies": [
+    "react",
+    "typescript",
+    "tailwindcss"
+  ],
+  "metadata": {
+    "created": "2024-01-01",
+    "lastModified": "2024-01-01",
+    "author": "Test User"
+  }
+} 

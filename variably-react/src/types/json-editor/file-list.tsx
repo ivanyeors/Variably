@@ -3,7 +3,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { X, FileJson, AlertCircle, FolderTree } from "lucide-react"
-import { JSONStructureTree } from "./json-structure-tree"
 import type { FileListProps } from "@/types/json-editor"
 
 export function FileList({ files, onFileSelect, onFileRemove, selectedFileId }: FileListProps) {
@@ -102,13 +101,11 @@ export function FileList({ files, onFileSelect, onFileRemove, selectedFileId }: 
             <div className="text-xs text-muted-foreground px-2 py-1">
               {selectedFile.name} structure
             </div>
-            <JSONStructureTree 
-              data={selectedFile.content}
-              onNodeSelect={(path, value) => {
-                console.log('Selected node:', path, value)
-                // You can implement navigation or highlighting here
-              }}
-            />
+            <div className="p-4 text-center">
+              <FolderTree className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">Structure view not available</p>
+              <p className="text-xs text-muted-foreground/70 mt-1">JSON structure tree component not implemented</p>
+            </div>
           </div>
         ) : (
           <div className="p-4 text-center">

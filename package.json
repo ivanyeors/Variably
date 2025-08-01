@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@atlaskit/inline-edit": "^15.3.2",
+    "@atlaskit/pragmatic-drag-and-drop": "^1.7.4"
+  }
+}

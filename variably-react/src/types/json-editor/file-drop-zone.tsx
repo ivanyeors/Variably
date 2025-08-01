@@ -1,14 +1,22 @@
 // src/components/JSONEditor/FileDropZone.tsx
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FileList } from "./file-list"
 import { JSONEditor } from "./json-editor"
-import { FileActions } from "./file-actions"
+
 import { ThemeToggle } from "@/components/theme-toggle"
-import { CheckCircle, Upload, Lock, Zap, Menu, X, Loader2, FileJson } from "lucide-react"
+import { CheckCircle, Upload, Lock, Zap, Menu, X, Loader2, FileJson, Settings, HelpCircle, Info, ChevronDown, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 import type { JSONFile } from "@/types/json-editor"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 export function FileDropZone() {
   const [files, setFiles] = useState<JSONFile[]>([])
@@ -16,68 +24,8 @@ export function FileDropZone() {
   const [selectedFileId, setSelectedFileId] = useState<string>()
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['files']))
   const fileInputRef = useRef<HTMLInputElement>(null)
-
-  // Add global drag event listeners
-  useEffect(() => {
-    const handleGlobalDragOver = (e: DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      setIsDragOver(true)
-    }
-
-    const handleGlobalDragEnter = (e: DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      setIsDragOver(true)
-    }
-
-    const handleGlobalDragLeave = (e: DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      // Only set to false if we're leaving the window entirely
-      if (e.clientX <= 0 || e.clientY <= 0 || 
-          e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
-        setIsDragOver(false)
-      }
-    }
-
-    const handleGlobalDrop = async (e: DragEvent) => {
-      e.preventDefault()
-      e.stopPropagation()
-      setIsDragOver(false)
-      
-      if (e.dataTransfer?.files) {
-        setIsProcessing(true)
-        try {
-          const newFiles = await processFiles(e.dataTransfer.files)
-          setFiles(prev => [...prev, ...newFiles])
-          if (!selectedFileId && newFiles.length > 0) {
-            setSelectedFileId(newFiles[0].id)
-          }
-          if (newFiles.length > 0) {
-            toast.success(`${newFiles.length} file(s) loaded successfully`)
-          }
-        } finally {
-          setIsProcessing(false)
-        }
-      }
-    }
-
-    // Add event listeners to document body
-    document.body.addEventListener('dragover', handleGlobalDragOver)
-    document.body.addEventListener('dragenter', handleGlobalDragEnter)
-    document.body.addEventListener('dragleave', handleGlobalDragLeave)
-    document.body.addEventListener('drop', handleGlobalDrop)
-
-    // Cleanup
-    return () => {
-      document.body.removeEventListener('dragover', handleGlobalDragOver)
-      document.body.removeEventListener('dragenter', handleGlobalDragEnter)
-      document.body.removeEventListener('dragleave', handleGlobalDragLeave)
-      document.body.removeEventListener('drop', handleGlobalDrop)
-    }
-  }, [selectedFileId])
 
   const processFiles = useCallback(async (fileList: FileList): Promise<JSONFile[]> => {
     const jsonFiles: JSONFile[] = []
@@ -126,6 +74,9 @@ export function FileDropZone() {
       // Auto-select first file if none selected
       if (!selectedFileId && newFiles.length > 0) {
         setSelectedFileId(newFiles[0].id)
+      }
+      if (newFiles.length > 0) {
+        toast.success(`${newFiles.length} file(s) loaded successfully`)
       }
     } finally {
       setIsProcessing(false)
@@ -207,50 +158,6 @@ export function FileDropZone() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Global Drop Zone */}
-      <div
-        className={`fixed inset-0 z-[9999] transition-all duration-300 ${
-          isDragOver 
-            ? 'bg-primary/20 backdrop-blur-sm pointer-events-auto border-4 border-dashed border-primary/50' 
-            : 'pointer-events-none'
-        }`}
-        onDragOver={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          setIsDragOver(true)
-        }}
-        onDragEnter={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          setIsDragOver(true)
-        }}
-        onDragLeave={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          // Only set drag over to false if we're leaving the entire drop zone
-          if (e.currentTarget === e.target) {
-            setIsDragOver(false)
-          }
-        }}
-        onDrop={(e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          setIsDragOver(false)
-          handleDrop(e)
-        }}
-      />
-      
-      {/* Drag Overlay - Always visible when dragging */}
-      {isDragOver && (
-        <div className="fixed inset-0 z-[9999] bg-primary/30 backdrop-blur-sm border-4 border-dashed border-primary flex items-center justify-center">
-          <div className="text-center bg-background/90 rounded-lg p-8 shadow-lg">
-            <Upload className="w-20 h-20 mx-auto mb-4 text-primary animate-pulse" />
-            <h2 className="text-2xl font-bold text-primary mb-2">Drop JSON Files Here</h2>
-            <p className="text-lg text-muted-foreground">Release to load your JSON files</p>
-          </div>
-        </div>
-      )}
-      
       {/* Loading Overlay */}
       {isProcessing && (
         <div className="fixed inset-0 z-[10000] bg-background/80 backdrop-blur-sm flex items-center justify-center">
@@ -294,16 +201,101 @@ export function FileDropZone() {
             <div className="flex items-center gap-2">
               <ThemeToggle />
               
+              {/* Desktop Menu Dropdown */}
+              {files.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="hidden md:flex"
+                    >
+                      <Menu className="h-4 w-4 mr-2" />
+                      Menu
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Files</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Add Files
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (selectedFile) {
+                        handleSave(selectedFile.id, false)
+                      }
+                    }}>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Save Current File
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Info</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => {
+                      toast.info(`Loaded ${files.length} file(s)`)
+                    }}>
+                      <Info className="h-4 w-4 mr-2" />
+                      File Count
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      const modifiedCount = files.filter(f => f.isModified).length
+                      toast.info(`${modifiedCount} file(s) have unsaved changes`)
+                    }}>
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      Modified Files
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              
               {/* Mobile Menu Button */}
               {files.length > 0 && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="md:hidden"
-                  onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-                >
-                  <Menu className="h-4 w-4" />
-                </Button>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="md:hidden"
+                    >
+                      <Menu className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-56">
+                    <DropdownMenuLabel>Files</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
+                      <FileJson className="h-4 w-4 mr-2" />
+                      Show Sidebar
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Add Files
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      if (selectedFile) {
+                        handleSave(selectedFile.id, false)
+                      }
+                    }}>
+                      <Settings className="h-4 w-4 mr-2" />
+                      Save Current File
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuLabel>Info</DropdownMenuLabel>
+                    <DropdownMenuItem onClick={() => {
+                      toast.info(`Loaded ${files.length} file(s)`)
+                    }}>
+                      <Info className="h-4 w-4 mr-2" />
+                      File Count
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => {
+                      const modifiedCount = files.filter(f => f.isModified).length
+                      toast.info(`${modifiedCount} file(s) have unsaved changes`)
+                    }}>
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      Modified Files
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
             </div>
           </div>
@@ -318,9 +310,46 @@ export function FileDropZone() {
             <div className="py-6 pr-2 lg:py-8">
               <div className="space-y-4">
                 <div className="px-3 py-2">
-                  <h2 className="mb-2 px-4 text-lg font-semibold tracking-tight">
-                    Files
-                  </h2>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="px-4 text-lg font-semibold tracking-tight">
+                      Files
+                    </h2>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>File Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Add Files
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          const modifiedFiles = files.filter(f => f.isModified)
+                          if (modifiedFiles.length > 0) {
+                            modifiedFiles.forEach(file => handleSave(file.id, false))
+                            toast.success(`Saved ${modifiedFiles.length} file(s)`)
+                          }
+                        }}>
+                          <Settings className="h-4 w-4 mr-2" />
+                          Save All Modified
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => {
+                          toast.info(`Total files: ${files.length}`)
+                        }}>
+                          <Info className="h-4 w-4 mr-2" />
+                          File Info
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
                   <div className="space-y-1">
                     <FileList
                       files={files}
@@ -328,6 +357,90 @@ export function FileDropZone() {
                       onFileRemove={handleFileRemove}
                       selectedFileId={selectedFileId}
                     />
+                  </div>
+                </div>
+                
+                {/* Collapsible Statistics Section */}
+                <div className="px-3 py-2">
+                  <div 
+                    className="flex items-center justify-between cursor-pointer p-2 rounded-md hover:bg-accent/50 transition-colors"
+                    onClick={() => {
+                      setExpandedSections(prev => {
+                        const newSet = new Set(prev)
+                        if (newSet.has('stats')) {
+                          newSet.delete('stats')
+                        } else {
+                          newSet.add('stats')
+                        }
+                        return newSet
+                      })
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Info className="h-4 w-4" />
+                      <span className="text-sm font-medium">Statistics</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                    >
+                      {expandedSections.has('stats') ? (
+                        <ChevronDown className="h-3 w-3" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                  {expandedSections.has('stats') && (
+                    <div className="mt-2 space-y-2 p-2 bg-muted/30 rounded-md">
+                      <div className="flex justify-between text-xs">
+                        <span>Total Files:</span>
+                        <span className="font-medium">{files.length}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Modified:</span>
+                        <span className="font-medium text-primary">
+                          {files.filter(f => f.isModified).length}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Total Size:</span>
+                        <span className="font-medium">
+                          {(files.reduce((sum, f) => sum + f.size, 0) / 1024).toFixed(1)} KB
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Sidebar Drop Zone for Additional Files */}
+                <div className="px-3 py-2">
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors duration-200 ${
+                      isDragOver 
+                        ? 'border-primary/50 bg-primary/5' 
+                        : 'border-muted-foreground/30 hover:border-primary/50'
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragOver(true)
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragOver(true)
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragOver(false)
+                    }}
+                    onDrop={handleDrop}
+                  >
+                    <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Drop more JSON files here</p>
                   </div>
                 </div>
               </div>
@@ -367,6 +480,90 @@ export function FileDropZone() {
                     />
                   </div>
                 </div>
+                
+                {/* Mobile Sidebar Statistics Section */}
+                <div className="px-3 py-2">
+                  <div 
+                    className="flex items-center justify-between cursor-pointer p-2 rounded-md hover:bg-accent/50 transition-colors"
+                    onClick={() => {
+                      setExpandedSections(prev => {
+                        const newSet = new Set(prev)
+                        if (newSet.has('mobile-stats')) {
+                          newSet.delete('mobile-stats')
+                        } else {
+                          newSet.add('mobile-stats')
+                        }
+                        return newSet
+                      })
+                    }}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Info className="h-4 w-4" />
+                      <span className="text-sm font-medium">Statistics</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0"
+                    >
+                      {expandedSections.has('mobile-stats') ? (
+                        <ChevronDown className="h-3 w-3" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3" />
+                      )}
+                    </Button>
+                  </div>
+                  {expandedSections.has('mobile-stats') && (
+                    <div className="mt-2 space-y-2 p-2 bg-muted/30 rounded-md">
+                      <div className="flex justify-between text-xs">
+                        <span>Total Files:</span>
+                        <span className="font-medium">{files.length}</span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Modified:</span>
+                        <span className="font-medium text-primary">
+                          {files.filter(f => f.isModified).length}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-xs">
+                        <span>Total Size:</span>
+                        <span className="font-medium">
+                          {(files.reduce((sum, f) => sum + f.size, 0) / 1024).toFixed(1)} KB
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Mobile Sidebar Drop Zone for Additional Files */}
+                <div className="px-3 py-2">
+                  <div 
+                    className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors duration-200 ${
+                      isDragOver 
+                        ? 'border-primary/50 bg-primary/5' 
+                        : 'border-muted-foreground/30 hover:border-primary/50'
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragOver(true)
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragOver(true)
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragOver(false)
+                    }}
+                    onDrop={handleDrop}
+                  >
+                    <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">Drop more JSON files here</p>
+                  </div>
+                </div>
               </div>
             </div>
           </aside>
@@ -380,7 +577,29 @@ export function FileDropZone() {
               <div className="flex items-center justify-center w-full h-full">
                 <div className="w-full h-full">
                   {/* Main Drop Zone */}
-                  <Card className="relative overflow-hidden border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 transition-colors duration-200">
+                  <Card 
+                    className={`relative overflow-hidden border-2 border-dashed transition-colors duration-200 ${
+                      isDragOver 
+                        ? 'border-primary/50 bg-primary/5' 
+                        : 'border-muted-foreground/30 hover:border-primary/50'
+                    }`}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragOver(true)
+                    }}
+                    onDragEnter={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragOver(true)
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      setIsDragOver(false)
+                    }}
+                    onDrop={handleDrop}
+                  >
                     <CardContent className="p-8 sm:p-16 text-center">
                       {/* Upload Icon */}
                       <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 sm:mb-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-full flex items-center justify-center">
@@ -469,16 +688,10 @@ export function FileDropZone() {
             /* File Editor Layout */
             <div className="flex-1 space-y-4 h-full">
               {selectedFile ? (
-                <div className="space-y-4">
-                  <FileActions
-                    file={selectedFile}
-                    onSave={handleSave}
-                  />
-                  <JSONEditor
-                    file={selectedFile}
-                    onContentChange={handleContentChange}
-                  />
-                </div>
+                <JSONEditor
+                  file={selectedFile}
+                  onContentChange={handleContentChange}
+                />
               ) : (
                 <Card className="h-96 flex items-center justify-center">
                   <CardContent className="text-center">

@@ -1,0 +1,79 @@
+{
+  "user": {
+    "id": 123,
+    "name": "John Doe",
+    "email": "john@example.com",
+    "active": true,
+    "profile": {
+      "avatar": "https://example.com/avatar.jpg",
+      "bio": "Software developer",
+      "tags": ["javascript", "react", "typescript"]
+    },
+    "settings": {
+      "theme": "dark",
+      "notifications": true,
+      "language": "en"
+    }
+  },
+  "posts": [
+    {
+      "id": 1,
+      "title": "First Post",
+      "content": "This is the first post content",
+      "tags": ["general"],
+      "metadata": {
+        "created": "2024-01-01",
+        "views": 150
+      }
+    },
+    {
+      "id": 2,
+      "title": "Second Post",
+      "content": "This is the second post content",
+      "tags": ["tutorial", "react"],
+      "metadata": {
+        "created": "2024-01-02",
+        "views": 300
+      }
+    }
+  ],
+  "categories": [
+    "Technology",
+    "Programming",
+    "Web Development"
+  ],
+  "stats": {
+    "totalUsers": 1000,
+    "totalPosts": 50,
+    "activeUsers": 750
+  },
+  "nullValue": null,
+  "emptyArray": [],
+  "emptyObject": {},
+  "nested": {
+    "level1": {
+      "id": 999,
+      "name": "Nested Item",
+      "level2": {
+        "id": 888,
+        "name": "Deep Nested"
+      }
+    }
+  },
+  "duplicateKeys": {
+    "id": "duplicate1",
+    "name": "Duplicate Test",
+    "nested": {
+      "id": "duplicate2",
+      "name": "Another Duplicate"
+    }
+  },
+  "anotherSection": {
+    "id": "duplicate3",
+    "name": "Third Duplicate",
+    "metadata": {
+      "id": "duplicate4",
+      "name": "Fourth Duplicate"
+    }
+  }
+} 
