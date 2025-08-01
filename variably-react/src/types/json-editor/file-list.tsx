@@ -2,9 +2,18 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { X, FileJson, AlertCircle, FolderTree, ChevronRight, ChevronDown, Folder, FileText } from "lucide-react"
+import { X, FileJson, AlertCircle, FolderTree, ChevronRight, ChevronDown, Folder, FileText, Upload } from "lucide-react"
 import type { FileListProps } from "@/types/json-editor"
 import { useState } from "react"
+import type { RefObject } from "react"
+
+// Extended FileListProps to include drag and drop functionality
+interface ExtendedFileListProps extends FileListProps {
+  onDrop?: (e: React.DragEvent) => Promise<void>
+  isDragOver?: boolean
+  setIsDragOver?: (isDragOver: boolean) => void
+  fileInputRef?: RefObject<HTMLInputElement>
+}
 
 // JSON Tree Node Component
 interface TreeNodeProps {
@@ -144,7 +153,15 @@ function JSONTreeView({ data, fileName }: JSONTreeViewProps) {
   )
 }
 
-export function FileList({ files, onFileSelect, onFileRemove, selectedFileId }: FileListProps) {
+export function FileList({ 
+  files, 
+  onFileSelect, 
+  onFileRemove, 
+  selectedFileId,
+  onDrop,
+  isDragOver,
+  setIsDragOver
+}: ExtendedFileListProps) {
   const selectedFile = files.find(f => f.id === selectedFileId)
   
   if (files.length === 0) {
@@ -172,6 +189,37 @@ export function FileList({ files, onFileSelect, onFileRemove, selectedFileId }: 
       
       <TabsContent value="files" className="mt-4 flex-1 min-h-0">
         <div className="space-y-2 h-full overflow-y-auto">
+          {/* Drop Zone - Positioned under tabs but above file list */}
+          {onDrop && (
+            <div 
+              className={`border-2 border-dashed rounded-lg p-3 text-center transition-colors duration-200 mb-3 ${
+                isDragOver 
+                  ? 'border-primary/50 bg-primary/5' 
+                  : 'border-muted-foreground/30 hover:border-primary/50'
+              }`}
+              onDragOver={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setIsDragOver?.(true)
+              }}
+              onDragEnter={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setIsDragOver?.(true)
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setIsDragOver?.(false)
+              }}
+              onDrop={onDrop}
+            >
+              <Upload className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
+              <p className="text-xs text-muted-foreground">Drop more JSON files here</p>
+            </div>
+          )}
+          
+          {/* File List */}
           {files.map((file) => {
             const isSelected = selectedFileId === file.id
             const hasErrors = file.content === null || file.content === undefined

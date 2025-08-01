@@ -302,43 +302,6 @@ export function FileDropZone() {
         </div>
       </header>
 
-      {/* Top Drop Zone - Always Visible */}
-      <div className="border-b bg-muted/30">
-        <div className="container py-4">
-          <div 
-            className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors duration-200 ${
-              isDragOver 
-                ? 'border-primary/50 bg-primary/5' 
-                : 'border-muted-foreground/30 hover:border-primary/50'
-            }`}
-            onDragOver={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setIsDragOver(true)
-            }}
-            onDragEnter={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setIsDragOver(true)
-            }}
-            onDragLeave={(e) => {
-              e.preventDefault()
-              e.stopPropagation()
-              setIsDragOver(false)
-            }}
-            onDrop={handleDrop}
-          >
-            <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">
-              {files.length === 0 
-                ? "Drop JSON files here to get started" 
-                : "Drop more JSON files here"
-              }
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="flex-1 flex min-h-0">
         {/* Sidebar */}
@@ -448,6 +411,9 @@ export function FileDropZone() {
                       onFileSelect={handleFileSelect}
                       onFileRemove={handleFileRemove}
                       selectedFileId={selectedFileId}
+                      onDrop={handleDrop}
+                      isDragOver={isDragOver}
+                      setIsDragOver={setIsDragOver}
                     />
                   </div>
                 </div>
@@ -540,6 +506,9 @@ export function FileDropZone() {
                       onFileSelect={handleFileSelect}
                       onFileRemove={handleFileRemove}
                       selectedFileId={selectedFileId}
+                      onDrop={handleDrop}
+                      isDragOver={isDragOver}
+                      setIsDragOver={setIsDragOver}
                     />
                   </div>
                 </div>
