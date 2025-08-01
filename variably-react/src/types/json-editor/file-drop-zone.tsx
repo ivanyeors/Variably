@@ -302,6 +302,43 @@ export function FileDropZone() {
         </div>
       </header>
 
+      {/* Top Drop Zone - Always Visible */}
+      <div className="border-b bg-muted/30">
+        <div className="container py-4">
+          <div 
+            className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors duration-200 ${
+              isDragOver 
+                ? 'border-primary/50 bg-primary/5' 
+                : 'border-muted-foreground/30 hover:border-primary/50'
+            }`}
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsDragOver(true)
+            }}
+            onDragEnter={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsDragOver(true)
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setIsDragOver(false)
+            }}
+            onDrop={handleDrop}
+          >
+            <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm text-muted-foreground">
+              {files.length === 0 
+                ? "Drop JSON files here to get started" 
+                : "Drop more JSON files here"
+              }
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Main Content */}
       <div className="flex-1 flex min-h-0">
         {/* Sidebar */}
@@ -309,58 +346,7 @@ export function FileDropZone() {
           <aside className="hidden md:block w-96 shrink-0 border-r bg-background">
             <div className="py-6 pr-2 lg:py-8">
               <div className="space-y-4">
-                <div className="px-3 py-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="px-4 text-lg font-semibold tracking-tight">
-                      Files
-                    </h2>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0"
-                        >
-                          <Settings className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>File Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
-                          <Upload className="h-4 w-4 mr-2" />
-                          Add Files
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => {
-                          const modifiedFiles = files.filter(f => f.isModified)
-                          if (modifiedFiles.length > 0) {
-                            modifiedFiles.forEach(file => handleSave(file.id, false))
-                            toast.success(`Saved ${modifiedFiles.length} file(s)`)
-                          }
-                        }}>
-                          <Settings className="h-4 w-4 mr-2" />
-                          Save All Modified
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => {
-                          toast.info(`Total files: ${files.length}`)
-                        }}>
-                          <Info className="h-4 w-4 mr-2" />
-                          File Info
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  <div className="space-y-1">
-                    <FileList
-                      files={files}
-                      onFileSelect={handleFileSelect}
-                      onFileRemove={handleFileRemove}
-                      selectedFileId={selectedFileId}
-                    />
-                  </div>
-                </div>
-                
-                {/* Collapsible Statistics Section */}
+                {/* Statistics Section - Moved to top */}
                 <div className="px-3 py-2">
                   <div 
                     className="flex items-center justify-between cursor-pointer p-2 rounded-md hover:bg-accent/50 transition-colors"
@@ -413,34 +399,56 @@ export function FileDropZone() {
                     </div>
                   )}
                 </div>
-                
-                {/* Sidebar Drop Zone for Additional Files */}
+
+                {/* Files Section */}
                 <div className="px-3 py-2">
-                  <div 
-                    className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors duration-200 ${
-                      isDragOver 
-                        ? 'border-primary/50 bg-primary/5' 
-                        : 'border-muted-foreground/30 hover:border-primary/50'
-                    }`}
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setIsDragOver(true)
-                    }}
-                    onDragEnter={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setIsDragOver(true)
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setIsDragOver(false)
-                    }}
-                    onDrop={handleDrop}
-                  >
-                    <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Drop more JSON files here</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="px-4 text-lg font-semibold tracking-tight">
+                      Files
+                    </h2>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0"
+                        >
+                          <Settings className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuLabel>File Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Add Files
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => {
+                          const modifiedFiles = files.filter(f => f.isModified)
+                          if (modifiedFiles.length > 0) {
+                            modifiedFiles.forEach(file => handleSave(file.id, false))
+                            toast.success(`Saved ${modifiedFiles.length} file(s)`)
+                          }
+                        }}>
+                          <Settings className="h-4 w-4 mr-2" />
+                          Save All Modified
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem onClick={() => {
+                          toast.info(`Total files: ${files.length}`)
+                        }}>
+                          <Info className="h-4 w-4 mr-2" />
+                          File Info
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                  <div className="space-y-1">
+                    <FileList
+                      files={files}
+                      onFileSelect={handleFileSelect}
+                      onFileRemove={handleFileRemove}
+                      selectedFileId={selectedFileId}
+                    />
                   </div>
                 </div>
               </div>
@@ -458,30 +466,7 @@ export function FileDropZone() {
           <aside className="fixed top-14 left-0 z-50 h-[calc(100vh-3.5rem)] w-96 border-r bg-background md:hidden">
             <div className="py-6 pr-2">
               <div className="space-y-4">
-                <div className="px-3 py-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="px-4 text-lg font-semibold tracking-tight">
-                      Files
-                    </h2>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setIsSidebarOpen(false)}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="space-y-1">
-                    <FileList
-                      files={files}
-                      onFileSelect={handleFileSelect}
-                      onFileRemove={handleFileRemove}
-                      selectedFileId={selectedFileId}
-                    />
-                  </div>
-                </div>
-                
-                {/* Mobile Sidebar Statistics Section */}
+                {/* Mobile Sidebar Statistics Section - Moved to top */}
                 <div className="px-3 py-2">
                   <div 
                     className="flex items-center justify-between cursor-pointer p-2 rounded-md hover:bg-accent/50 transition-colors"
@@ -534,34 +519,28 @@ export function FileDropZone() {
                     </div>
                   )}
                 </div>
-                
-                {/* Mobile Sidebar Drop Zone for Additional Files */}
+
+                {/* Mobile Files Section */}
                 <div className="px-3 py-2">
-                  <div 
-                    className={`border-2 border-dashed rounded-lg p-4 text-center transition-colors duration-200 ${
-                      isDragOver 
-                        ? 'border-primary/50 bg-primary/5' 
-                        : 'border-muted-foreground/30 hover:border-primary/50'
-                    }`}
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setIsDragOver(true)
-                    }}
-                    onDragEnter={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setIsDragOver(true)
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setIsDragOver(false)
-                    }}
-                    onDrop={handleDrop}
-                  >
-                    <Upload className="w-6 h-6 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Drop more JSON files here</p>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="px-4 text-lg font-semibold tracking-tight">
+                      Files
+                    </h2>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setIsSidebarOpen(false)}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <div className="space-y-1">
+                    <FileList
+                      files={files}
+                      onFileSelect={handleFileSelect}
+                      onFileRemove={handleFileRemove}
+                      selectedFileId={selectedFileId}
+                    />
                   </div>
                 </div>
               </div>
@@ -571,35 +550,13 @@ export function FileDropZone() {
 
         {/* Main Content Area */}
         <main className="flex-1 flex flex-col min-h-0 p-4 md:p-6 lg:p-8">
-            {files.length === 0 ? (
-            /* Modern Empty State - Inspired by shadcn/ui blocks */
+          {files.length === 0 ? (
+            /* Modern Empty State - Simplified since drop zone is now at top */
             <div className="flex w-full h-full">
               <div className="flex items-center justify-center w-full h-full">
                 <div className="w-full h-full">
-                  {/* Main Drop Zone */}
-                  <Card 
-                    className={`relative overflow-hidden border-2 border-dashed transition-colors duration-200 ${
-                      isDragOver 
-                        ? 'border-primary/50 bg-primary/5' 
-                        : 'border-muted-foreground/30 hover:border-primary/50'
-                    }`}
-                    onDragOver={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setIsDragOver(true)
-                    }}
-                    onDragEnter={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setIsDragOver(true)
-                    }}
-                    onDragLeave={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      setIsDragOver(false)
-                    }}
-                    onDrop={handleDrop}
-                  >
+                  {/* Simplified Empty State */}
+                  <Card className="h-full flex items-center justify-center">
                     <CardContent className="p-8 sm:p-16 text-center">
                       {/* Upload Icon */}
                       <div className="w-16 h-16 sm:w-24 sm:h-24 mx-auto mb-4 sm:mb-6 bg-gradient-to-br from-primary/10 to-primary/5 rounded-full flex items-center justify-center">
@@ -608,18 +565,11 @@ export function FileDropZone() {
                       
                       {/* Main Text */}
                       <h2 className="text-2xl sm:text-3xl font-bold mb-3 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent">
-                        Drop your JSON files here
+                        Ready to edit JSON files
                       </h2>
                       <p className="text-base sm:text-lg text-muted-foreground mb-6 sm:mb-8 max-w-md mx-auto">
-                        Drag and drop JSON files anywhere in this window to start editing them instantly
+                        Use the drop zone at the top to add JSON files, or click the browse button below
                       </p>
-                      
-                      {/* Or Divider */}
-                      <div className="flex items-center justify-center mb-6 sm:mb-8">
-                        <div className="flex-1 h-px bg-border"></div>
-                        <span className="px-4 text-sm text-muted-foreground font-medium">or</span>
-                        <div className="flex-1 h-px bg-border"></div>
-                      </div>
                       
                       {/* Browse Button */}
                       <Button 

@@ -128,11 +128,11 @@ function JSONTreeView({ data, fileName }: JSONTreeViewProps) {
   }
 
   return (
-    <div className="space-y-2">
-      <div className="text-xs text-muted-foreground px-2 py-1 border-b">
+    <div className="flex flex-col h-full">
+      <div className="text-xs text-muted-foreground px-2 py-1 border-b flex-shrink-0">
         {fileName} structure
       </div>
-      <div className="max-h-96 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto min-h-0">
         <TreeNode
           data={data}
           name="root"
@@ -158,8 +158,8 @@ export function FileList({ files, onFileSelect, onFileRemove, selectedFileId }: 
   }
 
   return (
-    <Tabs defaultValue="files" className="w-full">
-      <TabsList className="grid w-full grid-cols-2">
+    <Tabs defaultValue="files" className="w-full h-full flex flex-col">
+      <TabsList className="grid w-full grid-cols-2 flex-shrink-0">
         <TabsTrigger value="files" className="flex items-center gap-2">
           <FileJson className="h-3 w-3" />
           Files
@@ -170,8 +170,8 @@ export function FileList({ files, onFileSelect, onFileRemove, selectedFileId }: 
         </TabsTrigger>
       </TabsList>
       
-      <TabsContent value="files" className="mt-4">
-        <div className="space-y-2">
+      <TabsContent value="files" className="mt-4 flex-1 min-h-0">
+        <div className="space-y-2 h-full overflow-y-auto">
           {files.map((file) => {
             const isSelected = selectedFileId === file.id
             const hasErrors = file.content === null || file.content === undefined
@@ -234,13 +234,17 @@ export function FileList({ files, onFileSelect, onFileRemove, selectedFileId }: 
         </div>
       </TabsContent>
       
-      <TabsContent value="structure" className="mt-4">
+      <TabsContent value="structure" className="mt-4 flex-1 min-h-0">
         {selectedFile && selectedFile.content ? (
-          <JSONTreeView data={selectedFile.content} fileName={selectedFile.name} />
+          <div className="h-full">
+            <JSONTreeView data={selectedFile.content} fileName={selectedFile.name} />
+          </div>
         ) : (
-          <div className="p-4 text-center">
-            <FolderTree className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
-            <p className="text-sm text-muted-foreground">Select a file to view structure</p>
+          <div className="p-4 text-center h-full flex items-center justify-center">
+            <div>
+              <FolderTree className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
+              <p className="text-sm text-muted-foreground">Select a file to view structure</p>
+            </div>
           </div>
         )}
       </TabsContent>
