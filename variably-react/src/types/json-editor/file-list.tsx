@@ -2,8 +2,147 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { X, FileJson, AlertCircle, FolderTree } from "lucide-react"
+import { X, FileJson, AlertCircle, FolderTree, ChevronRight, ChevronDown, Folder, FileText } from "lucide-react"
 import type { FileListProps } from "@/types/json-editor"
+import { useState } from "react"
+
+// JSON Tree Node Component
+interface TreeNodeProps {
+  data: unknown
+  name: string
+  level: number
+  path: string
+}
+
+function TreeNode({ data, name, level, path }: TreeNodeProps) {
+  const [isExpanded, setIsExpanded] = useState(level < 2) // Auto-expand first 2 levels
+  const isObject = typeof data === 'object' && data !== null && !Array.isArray(data)
+  const isArray = Array.isArray(data)
+  const isPrimitive = !isObject && !isArray
+  
+  const hasChildren = isObject ? Object.keys(data as Record<string, unknown>).length > 0 : isArray ? (data as unknown[]).length > 0 : false
+  
+  const getValuePreview = () => {
+    if (isPrimitive) {
+      if (typeof data === 'string') {
+        return `"${data.length > 20 ? data.substring(0, 20) + '...' : data}"`
+      }
+      return String(data)
+    }
+    if (isArray) {
+      return `[${(data as unknown[]).length} items]`
+    }
+    if (isObject) {
+      return `{${Object.keys(data as Record<string, unknown>).length} keys}`
+    }
+    return ''
+  }
+
+  const getIcon = () => {
+    if (isArray) return <FolderTree className="h-3 w-3 text-blue-500" />
+    if (isObject) return <Folder className="h-3 w-3 text-orange-500" />
+    return <FileText className="h-3 w-3 text-gray-500" />
+  }
+
+  return (
+    <div className="select-none">
+      <div 
+        className={`
+          flex items-center gap-1 px-2 py-1 hover:bg-accent hover:text-accent-foreground rounded-sm cursor-pointer
+          ${level === 0 ? 'font-medium' : ''}
+        `}
+        style={{ paddingLeft: `${level * 16 + 8}px` }}
+        onClick={() => hasChildren && setIsExpanded(!isExpanded)}
+      >
+        {hasChildren ? (
+          isExpanded ? (
+            <ChevronDown className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-3 w-3 flex-shrink-0 text-muted-foreground" />
+          )
+        ) : (
+          <div className="w-3 h-3 flex-shrink-0" />
+        )}
+        
+        {getIcon()}
+        
+        <span className="text-sm font-mono">
+          {name}
+          {isPrimitive && (
+            <span className="text-muted-foreground ml-2">
+              {getValuePreview()}
+            </span>
+          )}
+        </span>
+        
+        {!isPrimitive && (
+          <span className="text-xs text-muted-foreground ml-auto">
+            {getValuePreview()}
+          </span>
+        )}
+      </div>
+      
+      {isExpanded && hasChildren && (
+        <div>
+          {isArray ? (
+            (data as unknown[]).map((item: unknown, index: number) => (
+              <TreeNode
+                key={`${path}[${index}]`}
+                data={item}
+                name={`[${index}]`}
+                level={level + 1}
+                path={`${path}[${index}]`}
+              />
+            ))
+          ) : isObject ? (
+            Object.entries(data as Record<string, unknown>).map(([key, value]) => (
+              <TreeNode
+                key={`${path}.${key}`}
+                data={value}
+                name={key}
+                level={level + 1}
+                path={`${path}.${key}`}
+              />
+            ))
+          ) : null}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// JSON Tree View Component
+interface JSONTreeViewProps {
+  data: unknown
+  fileName: string
+}
+
+function JSONTreeView({ data, fileName }: JSONTreeViewProps) {
+  if (!data || typeof data !== 'object') {
+    return (
+      <div className="p-4 text-center">
+        <FileJson className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
+        <p className="text-sm text-muted-foreground">Invalid JSON structure</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="text-xs text-muted-foreground px-2 py-1 border-b">
+        {fileName} structure
+      </div>
+      <div className="max-h-96 overflow-y-auto">
+        <TreeNode
+          data={data}
+          name="root"
+          level={0}
+          path=""
+        />
+      </div>
+    </div>
+  )
+}
 
 export function FileList({ files, onFileSelect, onFileRemove, selectedFileId }: FileListProps) {
   const selectedFile = files.find(f => f.id === selectedFileId)
@@ -97,16 +236,7 @@ export function FileList({ files, onFileSelect, onFileRemove, selectedFileId }: 
       
       <TabsContent value="structure" className="mt-4">
         {selectedFile && selectedFile.content ? (
-          <div className="space-y-2">
-            <div className="text-xs text-muted-foreground px-2 py-1">
-              {selectedFile.name} structure
-            </div>
-            <div className="p-4 text-center">
-              <FolderTree className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
-              <p className="text-sm text-muted-foreground">Structure view not available</p>
-              <p className="text-xs text-muted-foreground/70 mt-1">JSON structure tree component not implemented</p>
-            </div>
-          </div>
+          <JSONTreeView data={selectedFile.content} fileName={selectedFile.name} />
         ) : (
           <div className="p-4 text-center">
             <FolderTree className="mx-auto h-8 w-8 text-muted-foreground mb-3" />
