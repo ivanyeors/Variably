@@ -566,7 +566,7 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
             </span>
           ) : (
             <InlineEdit
-              key={`value-${item.id}-${JSON.stringify(item.value)}`}
+              key={`value-${item.id}-${item.type}-${String(item.value)}`}
               defaultValue={item.value === null ? 'null' : String(item.value)}
               onConfirm={(newValue) => {
                 let parsedValue: unknown = newValue
@@ -697,12 +697,21 @@ function TreeComponent({ data, onStructureChange }: { data: unknown; onStructure
             : item
         )
       
-      case 'update':
-        return state.map(item => 
-          item.id === action.itemId 
-            ? { ...item, value: action.value }
-            : item
-        )
+      case 'update': {
+        // Update item recursively throughout the tree
+        const updateItemRecursively = (items: TreeItem[]): TreeItem[] => {
+          return items.map(item => {
+            if (item.id === action.itemId) {
+              return { ...item, value: action.value }
+            }
+            return {
+              ...item,
+              children: updateItemRecursively(item.children)
+            }
+          })
+        }
+        return updateItemRecursively(state)
+      }
       
       case 'updateKey': {
         // Find the item to get its current key
