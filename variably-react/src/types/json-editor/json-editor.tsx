@@ -7,6 +7,7 @@ import { AlertCircle, CheckCircle, Code, Plus, Trash2, Copy, GripVertical, Chevr
 import type { JSONEditorProps } from "@/types/json-editor"
 import React from 'react'
 import { draggable, dropTargetForElements } from '@atlaskit/pragmatic-drag-and-drop/element/adapter'
+import InlineEdit from '@atlaskit/inline-edit'
 
 // Tree item interface
 interface TreeItem {
@@ -38,6 +39,8 @@ type TreeAction =
   | { type: 'expand'; itemId: string }
   | { type: 'collapse'; itemId: string }
   | { type: 'update'; itemId: string; value: unknown }
+  | { type: 'updateKey'; itemId: string; newKey: string }
+  | { type: 'bulkUpdateKey'; oldKey: string; newKey: string }
   | { type: 'delete'; itemId: string }
   | { type: 'add'; parentId: string | null; item: TreeItem }
 
@@ -169,6 +172,44 @@ function addItemToChildren(children: TreeItem[], parentId: string, item: TreeIte
   })
 }
 
+// Helper function to find and remove item from tree
+function findAndRemoveItem(items: TreeItem[], itemId: string): [TreeItem | null, TreeItem[]] {
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].id === itemId) {
+      const [removed] = items.splice(i, 1)
+      return [removed, [...items]]
+    }
+    const [found, updatedChildren] = findAndRemoveItem(items[i].children, itemId)
+    if (found) {
+      return [found, items.map((item, index) => 
+        index === i ? { ...item, children: updatedChildren } : item
+      )]
+    }
+  }
+  return [null, items]
+}
+
+// Helper function to find item by ID recursively
+function findItemByIdRecursive(items: TreeItem[], itemId: string): TreeItem | null {
+  for (const item of items) {
+    if (item.id === itemId) return item
+    const found = findItemByIdRecursive(item.children, itemId)
+    if (found) return found
+  }
+  return null
+}
+
+// Helper function to update all items with a specific key
+function updateAllItemsWithKey(items: TreeItem[], oldKey: string, newKey: string): TreeItem[] {
+  return items.map(item => {
+    const updatedItem = item.key === oldKey ? { ...item, key: newKey } : item
+    return {
+      ...updatedItem,
+      children: updateAllItemsWithKey(item.children, oldKey, newKey)
+    }
+  })
+}
+
 // Tree item component
 function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
   const [isDragging, setIsDragging] = useState(false)
@@ -181,6 +222,49 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
     registerTreeItem: () => () => {}, 
     dispatch: () => {}
   }
+  
+  // Check if any dropdown is open
+  const isDropdownOpen = useCallback(() => {
+    return document.querySelectorAll('[data-radix-popper-content-wrapper][data-state="open"], [data-radix-dropdown-menu-content][data-state="open"], [data-radix-select-content][data-state="open"]').length > 0
+  }, [])
+  
+  // Check if element is inside a dropdown
+  const isInsideDropdown = useCallback((element: HTMLElement) => {
+    return !!element.closest('[data-radix-popper-content-wrapper], [data-radix-dropdown-menu-content], [data-radix-select-content]')
+  }, [])
+  
+  // Global event listener to cancel drag when dropdowns open
+  useEffect(() => {
+    const handleDropdownOpen = () => {
+      if (isDragging) {
+        setIsDragging(false)
+        setIsOver(false)
+        setCanDropHere(false)
+      }
+    }
+
+    // Listen for dropdown state changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'data-state') {
+          const target = mutation.target as HTMLElement
+          if (target.getAttribute('data-state') === 'open') {
+            handleDropdownOpen()
+          }
+        }
+      })
+    })
+
+    // Observe all potential dropdown elements
+    const dropdownElements = document.querySelectorAll('[data-radix-popper-content-wrapper], [data-radix-dropdown-menu-content], [data-radix-select-content]')
+    dropdownElements.forEach(element => {
+      observer.observe(element, { attributes: true, attributeFilter: ['data-state'] })
+    })
+
+    return () => {
+      observer.disconnect()
+    }
+  }, [isDragging])
   
   // canDrop function to determine if an item can be dropped on this target
   const canDrop = (targetId: string, sourceId: string, context: TreeContextValue): boolean => {
@@ -233,9 +317,15 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
         uniqueContextId: context?.uniqueContextId
       }),
       onGenerateDragPreview: ({ nativeSetDragImage }) => {
+        // Check if any dropdown is open - if so, don't create drag preview
+        if (isDropdownOpen()) {
+          return () => {} // Return empty cleanup if dropdown is open
+        }
+
         // Create custom drag preview
         const preview = document.createElement('div')
         preview.className = 'bg-background border rounded-lg shadow-lg p-2 text-sm'
+        preview.style.zIndex = '9999' // Ensure it's above dropdowns
         preview.innerHTML = `
           <div class="flex items-center gap-2">
             <div class="text-muted-foreground">${item.key}</div>
@@ -248,7 +338,10 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
         }
         
         return () => {
-          document.body.removeChild(preview)
+          // Ensure proper cleanup of preview element
+          if (document.body.contains(preview)) {
+            document.body.removeChild(preview)
+          }
         }
       },
       onDragStart: () => {
@@ -260,7 +353,7 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
     })
 
     return cleanup
-  }, [item.id, item.canDrag, item.key, item.type, context?.uniqueContextId])
+  }, [item.id, item.canDrag, item.key, item.type, context?.uniqueContextId, isDropdownOpen])
 
   // Drop target setup
   useEffect(() => {
@@ -270,11 +363,22 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
       element: elementRef.current,
       canDrop: ({ source }) => {
         if (!context) return false
+        
+        // Check if any dropdown is open - if so, don't allow dropping
+        if (isDropdownOpen()) {
+          return false
+        }
+        
         const data = source.data as { id: string; uniqueContextId: symbol }
         if (data.uniqueContextId !== context.uniqueContextId) return false
         return canDrop(item.id, data.id, context)
       },
       onDragEnter: () => {
+        // Check if any dropdown is open - if so, don't show drop indicators
+        if (isDropdownOpen()) {
+          return
+        }
+        
         setIsOver(true)
         setCanDropHere(true)
       },
@@ -288,6 +392,7 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
         if (data.uniqueContextId !== context.uniqueContextId) return
         
         if (canDrop(item.id, data.id, context)) {
+          // For now, always use reparent - we can improve this later
           dispatch({
             type: 'instruction',
             instruction: { type: 'reparent', targetId: item.id },
@@ -302,18 +407,38 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
     })
 
     return cleanup
-  }, [item.id, context, dispatch])
+  }, [item.id, context, dispatch, isDropdownOpen])
 
-  const toggleExpanded = () => {
+  const toggleExpanded = useCallback((e: React.MouseEvent) => {
+    // Prevent event bubbling to avoid conflicts with inline editing
+    e.stopPropagation()
+    
     if (item.children.length > 0) {
       dispatch({
         type: item.isExpanded ? 'collapse' : 'expand',
         itemId: item.id
       })
     }
-  }
-  
+  }, [item.children.length, item.isExpanded, item.id, dispatch])
 
+  const handleRowClick = useCallback((e: React.MouseEvent) => {
+    // Don't toggle if clicking on interactive elements
+    const target = e.target as HTMLElement
+    if (target.closest('[data-drag-handle]') || 
+        isInsideDropdown(target) ||
+        target.closest('input') ||
+        target.closest('button')) {
+      return
+    }
+    
+    // Toggle expansion for items with children
+    if (item.children.length > 0) {
+      dispatch({
+        type: item.isExpanded ? 'collapse' : 'expand',
+        itemId: item.id
+      })
+    }
+  }, [item.children.length, item.isExpanded, item.id, dispatch, isInsideDropdown])
   
   const handleDelete = () => {
     dispatch({
@@ -322,21 +447,7 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
     })
   }
   
-  const renderValue = () => {
-    if (item.type === 'object' || item.type === 'array') {
-      return (
-        <span className="text-blue-500 hover:bg-accent/50 px-1 py-0.5 rounded cursor-pointer transition-colors">
-          {item.type === 'array' ? '[Array]' : '[Object]'}
-        </span>
-      )
-    }
-    
-    return (
-      <span className="hover:bg-accent/50 px-1 py-0.5 rounded cursor-pointer transition-colors">
-        {item.value === null ? 'null' : String(item.value)}
-      </span>
-    )
-  }
+
   
   return (
     <div
@@ -347,15 +458,24 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
       } ${isOver && canDropHere ? 'border-l-primary bg-accent/20' : 'border-l-transparent'} ${
         isOver && !canDropHere ? 'border-l-destructive bg-destructive/10' : ''
       }`}
+      style={{ 
+        // Ensure this element doesn't block dropdown interactions
+        position: 'relative',
+        zIndex: isDragging ? 1 : 'auto'
+      }}
     >
-      <div className={`flex items-center gap-2 py-1 px-2 hover:bg-accent/50 transition-colors ${
-        !item.canDrag ? 'opacity-60' : ''
-      }`}>
+      <div 
+        className={`flex items-center gap-2 py-1 px-2 hover:bg-accent/50 transition-colors cursor-pointer ${
+          !item.canDrag ? 'opacity-60' : ''
+        }`}
+        onClick={handleRowClick}
+      >
         {/* Drag handle */}
         {item.canDrag && (
           <div 
             data-drag-handle
             className="cursor-grab active:cursor-grabbing text-muted-foreground hover:text-foreground transition-colors"
+            onClick={(e) => e.stopPropagation()}
           >
             <GripVertical className="h-3 w-3" />
           </div>
@@ -368,7 +488,7 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
         {item.children.length > 0 && (
           <button
             onClick={toggleExpanded}
-            className="p-1 hover:bg-accent/50 rounded transition-colors"
+            className="p-1 hover:bg-accent/50 rounded transition-colors flex-shrink-0"
           >
             {item.isExpanded ? (
               <ChevronDown className="h-3 w-3" />
@@ -379,20 +499,51 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
         )}
         
         {/* Key */}
-        <div className="flex-1 min-w-0">
-          <span className="font-medium text-sm">
-            {item.key}
-          </span>
+        <div className="flex-1 min-w-0" onClick={(e) => e.stopPropagation()}>
+          <InlineEdit
+            key={`key-${item.id}-${item.key}`}
+            defaultValue={item.key}
+            onConfirm={(newKey) => {
+              if (newKey !== item.key && newKey.trim() !== '') {
+                dispatch({
+                  type: 'updateKey',
+                  itemId: item.id,
+                  newKey: newKey.trim()
+                })
+              }
+            }}
+            validate={(value) => {
+              if (!value || value.trim() === '') {
+                return 'Key cannot be empty'
+              }
+              return undefined
+            }}
+            readView={() => (
+              <span className="font-medium text-sm hover:bg-accent/50 px-1 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1 group/key">
+                {item.key}
+                <Edit3 className="h-3 w-3 opacity-0 group-hover/key:opacity-100 transition-opacity" />
+              </span>
+            )}
+            editView={(fieldProps, ref) => (
+              <input
+                ref={ref}
+                type="text"
+                {...fieldProps}
+                className="font-medium text-sm bg-background border border-input rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                autoFocus
+              />
+            )}
+          />
         </div>
         
         {/* Type badge */}
-        <Badge variant="outline" className="text-xs capitalize">
+        <Badge variant="outline" className="text-xs capitalize flex-shrink-0">
           {item.type}
         </Badge>
         
         {/* Draggable badge */}
         {item.canDrag && (
-          <Badge variant="secondary" className="text-xs">
+          <Badge variant="secondary" className="text-xs flex-shrink-0">
             Draggable
           </Badge>
         )}
@@ -401,26 +552,92 @@ function TreeItemComponent({ item, level }: { item: TreeItem; level: number }) {
         {isOver && (
           <Badge 
             variant={canDropHere ? "default" : "destructive"} 
-            className="text-xs"
+            className="text-xs flex-shrink-0"
           >
             {canDropHere ? "Drop Here" : "Cannot Drop"}
           </Badge>
         )}
         
         {/* Value */}
-        <div className="flex-1 min-w-0 text-sm text-muted-foreground">
-          {renderValue()}
+        <div className="flex-1 min-w-0 text-sm text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+          {item.type === 'object' || item.type === 'array' ? (
+            <span className="text-blue-500 hover:bg-accent/50 px-1 py-0.5 rounded cursor-pointer transition-colors">
+              {item.type === 'array' ? '[Array]' : '[Object]'}
+            </span>
+          ) : (
+            <InlineEdit
+              key={`value-${item.id}-${JSON.stringify(item.value)}`}
+              defaultValue={item.value === null ? 'null' : String(item.value)}
+              onConfirm={(newValue) => {
+                let parsedValue: unknown = newValue
+                
+                // Try to parse based on original type
+                if (item.type === 'number') {
+                  const num = Number(newValue)
+                  if (!isNaN(num)) parsedValue = num
+                } else if (item.type === 'boolean') {
+                  parsedValue = newValue === 'true'
+                } else if (item.type === 'null') {
+                  parsedValue = null
+                } else if (item.type === 'object' || item.type === 'array') {
+                  try {
+                    parsedValue = JSON.parse(newValue)
+                  } catch {
+                    parsedValue = newValue
+                  }
+                } else {
+                  parsedValue = newValue
+                }
+                
+                dispatch({
+                  type: 'update',
+                  itemId: item.id,
+                  value: parsedValue
+                })
+              }}
+              validate={(value) => {
+                if (item.type === 'number' && isNaN(Number(value))) {
+                  return 'Must be a valid number'
+                }
+                if (item.type === 'boolean' && value !== 'true' && value !== 'false') {
+                  return 'Must be true or false'
+                }
+                if (item.type === 'object' || item.type === 'array') {
+                  try {
+                    JSON.parse(value)
+                  } catch {
+                    return 'Must be valid JSON'
+                  }
+                }
+                return undefined
+              }}
+              readView={() => (
+                <span className="hover:bg-accent/50 px-1 py-0.5 rounded cursor-pointer transition-colors flex items-center gap-1 group/value">
+                  {item.value === null ? 'null' : String(item.value)}
+                  <Edit3 className="h-3 w-3 opacity-0 group-hover/value:opacity-100 transition-opacity" />
+                </span>
+              )}
+              editView={(fieldProps, ref) => (
+                <input
+                  ref={ref}
+                  type="text"
+                  {...fieldProps}
+                  className="text-sm bg-background border border-input rounded px-1 py-0.5 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  autoFocus
+                />
+              )}
+            />
+          )}
         </div>
         
         {/* Actions */}
-        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" onClick={(e) => e.stopPropagation()}>
           <Button
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0 hover:bg-accent/50"
             onClick={() => {
               // Handle duplicate logic here
-              console.log('Duplicate:', item.id)
             }}
           >
             <Copy className="h-3 w-3" />
@@ -487,6 +704,20 @@ function TreeComponent({ data, onStructureChange }: { data: unknown; onStructure
             : item
         )
       
+      case 'updateKey': {
+        // Find the item to get its current key
+        const targetItem = findItemByIdRecursive(state, action.itemId)
+        
+        if (targetItem && targetItem.key !== action.newKey) {
+          // Trigger bulk update for all items with the same key
+          return updateAllItemsWithKey(state, targetItem.key, action.newKey)
+        }
+        return state
+      }
+      
+      case 'bulkUpdateKey':
+        return updateAllItemsWithKey(state, action.oldKey, action.newKey)
+      
       case 'delete':
         return state.filter(item => item.id !== action.itemId)
       
@@ -512,26 +743,11 @@ function TreeComponent({ data, onStructureChange }: { data: unknown; onStructure
         // Handle drag and drop instructions
         const instruction = action.instruction as { type: string }
         if (instruction.type === 'reparent') {
-          // Find the item to move
-          const findAndRemoveItem = (items: TreeItem[]): [TreeItem | null, TreeItem[]] => {
-            for (let i = 0; i < items.length; i++) {
-              if (items[i].id === action.itemId) {
-                const [removed] = items.splice(i, 1)
-                return [removed, items]
-              }
-              const [found, updatedChildren] = findAndRemoveItem(items[i].children)
-              if (found) {
-                items[i].children = updatedChildren
-                return [found, items]
-              }
-            }
-            return [null, items]
-          }
-          
-          const [movedItem, updatedItems] = findAndRemoveItem([...state])
+          // Find the item to move and remove it from its current location
+          const [movedItem, updatedState] = findAndRemoveItem([...state], action.itemId)
           
           if (movedItem) {
-            // Find target and add as child
+            // Find the target item and add the moved item as a child
             const addAsChild = (items: TreeItem[]): TreeItem[] => {
               return items.map(item => {
                 if (item.id === action.targetId) {
@@ -547,7 +763,31 @@ function TreeComponent({ data, onStructureChange }: { data: unknown; onStructure
               })
             }
             
-            return addAsChild(updatedItems)
+            return addAsChild(updatedState)
+          }
+        } else if (instruction.type === 'reorder') {
+          // Handle reordering within the same parent
+          const [movedItem, updatedState] = findAndRemoveItem([...state], action.itemId)
+          
+          if (movedItem) {
+            // Find the target's parent and add the moved item as a sibling
+            const addAsSibling = (items: TreeItem[]): TreeItem[] => {
+              return items.map(item => {
+                if (item.id === action.targetId) {
+                  // Add as sibling at the same level
+                  return {
+                    ...item,
+                    children: [...item.children, { ...movedItem, parentId: item.parentId }]
+                  }
+                }
+                return {
+                  ...item,
+                  children: addAsSibling(item.children)
+                }
+              })
+            }
+            
+            return addAsSibling(updatedState)
           }
         }
         return state
@@ -598,12 +838,11 @@ function TreeComponent({ data, onStructureChange }: { data: unknown; onStructure
   }, [])
   
   // Stable registerTreeItem function
-  const registerTreeItem = useCallback((itemId: string, element: HTMLElement) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const registerTreeItem = useCallback((_itemId: string, _element: HTMLElement) => {
     // Store element reference for drag and drop operations
-    console.log(`Registered tree item: ${itemId}`, element)
     return () => {
       // Cleanup logic
-      console.log(`Unregistered tree item: ${itemId}`)
     }
   }, [])
   
@@ -697,7 +936,7 @@ function TreeComponent({ data, onStructureChange }: { data: unknown; onStructure
           </div>
         </div>
         
-        <div className="relative bg-background border rounded-lg p-4 transition-colors">
+        <div className="relative bg-background border rounded-lg p-4 transition-colors" style={{ zIndex: 0 }}>
           {state.map((item) => (
             <TreeItemComponent
               key={item.id}
