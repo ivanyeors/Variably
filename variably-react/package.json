@@ -13,6 +13,12 @@
     "@atlaskit/dynamic-table": "^18.2.7",
     "@atlaskit/inline-edit": "^15.3.2",
     "@atlaskit/pragmatic-drag-and-drop": "^1.7.4",
+    "@atlaskit/pragmatic-drag-and-drop-flourish": "^2.0.3",
+    "@atlaskit/pragmatic-drag-and-drop-hitbox": "^1.1.0",
+    "@atlaskit/pragmatic-drag-and-drop-live-region": "^1.3.0",
+    "@atlaskit/pragmatic-drag-and-drop-react-drop-indicator": "^3.2.1",
+    "@atlaskit/tokens": "^5.6.3",
+    "@atlaskit/tree": "^9.0.1",
     "@radix-ui/react-alert-dialog": "^1.1.14",
     "@radix-ui/react-checkbox": "^1.3.2",
     "@radix-ui/react-dialog": "^1.1.14",
@@ -30,11 +36,13 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.534.0",
+    "memoize-one": "^6.0.0",
     "next-themes": "^0.4.6",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "sonner": "^2.0.6",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.3.1",
+    "tiny-invariant": "^1.3.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",
