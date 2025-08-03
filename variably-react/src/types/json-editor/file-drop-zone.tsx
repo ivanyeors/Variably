@@ -4,9 +4,11 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { FileList } from "./file-list"
 import { JSONEditor } from "./json-editor"
+import { NodeBasedJSONEditorWrapper } from "./node-editor-wrapper"
 
 import { ThemeToggle } from "@/components/theme-toggle"
 import { CheckCircle, Upload, Lock, Zap, Menu, X, Loader2, FileJson, Settings, HelpCircle, Info, ChevronDown, ChevronRight } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "sonner"
 import type { JSONFile } from "@/types/json-editor"
 import {
@@ -25,6 +27,7 @@ export function FileDropZone() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
   const [isProcessing, setIsProcessing] = useState(false)
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['files']))
+  const [editorType, setEditorType] = useState<'tree' | 'node'>('tree')
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const processFiles = useCallback(async (fileList: FileList): Promise<JSONFile[]> => {
@@ -199,6 +202,19 @@ export function FileDropZone() {
             </div>
             
             <div className="flex items-center gap-2">
+              {/* Editor Type Selector */}
+              {files.length > 0 && (
+                <Select value={editorType} onValueChange={(value: 'tree' | 'node') => setEditorType(value)}>
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="tree">Tree Editor</SelectItem>
+                    <SelectItem value="node">Node Editor</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+              
               <ThemeToggle />
               
               {/* Desktop Menu Dropdown */}
@@ -607,10 +623,17 @@ export function FileDropZone() {
             /* File Editor Layout */
             <div className="flex-1 space-y-4 h-full">
               {selectedFile ? (
-                <JSONEditor
-                  file={selectedFile}
-                  onContentChange={handleContentChange}
-                />
+                editorType === 'node' ? (
+                  <NodeBasedJSONEditorWrapper
+                    file={selectedFile}
+                    onContentChange={handleContentChange}
+                  />
+                ) : (
+                  <JSONEditor
+                    file={selectedFile}
+                    onContentChange={handleContentChange}
+                  />
+                )
               ) : (
                 <Card className="h-96 flex items-center justify-center">
                   <CardContent className="text-center">
