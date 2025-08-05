@@ -35,15 +35,27 @@ interface NodeData extends Record<string, unknown> {
   onChange: (nodeId: string, newValue: unknown) => void
 }
 
-// Custom node types
+// Safe node components with error boundaries
 const ObjectNode = ({ data, isConnectable }: { data: NodeData; isConnectable: boolean }) => {
   const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(String(data.value || ''))
+  const [editValue, setEditValue] = useState(String(data?.value || ''))
 
-  const handleSave = () => {
-    data.onChange(data.label, editValue)
+  const handleSave = useCallback(() => {
+    if (data?.onChange) {
+      data.onChange(data.label || '', editValue)
+    }
     setIsEditing(false)
-  }
+  }, [data, editValue])
+
+  const handleCancel = useCallback(() => {
+    setIsEditing(false)
+  }, [])
+
+  const handleEdit = useCallback(() => {
+    setIsEditing(true)
+  }, [])
+
+  if (!data) return null
 
   return (
     <div className="bg-card border rounded-lg shadow-lg p-3 min-w-[200px]">
@@ -51,9 +63,9 @@ const ObjectNode = ({ data, isConnectable }: { data: NodeData; isConnectable: bo
       
       <div className="flex items-center gap-2 mb-2">
         <Badge variant="outline" className="text-xs">
-          {data.type}
+          {data.type || 'object'}
         </Badge>
-        <span className="text-sm font-medium">{data.label}</span>
+        <span className="text-sm font-medium">{data.label || 'Unknown'}</span>
       </div>
 
       {isEditing ? (
@@ -68,7 +80,7 @@ const ObjectNode = ({ data, isConnectable }: { data: NodeData; isConnectable: bo
             <Button size="sm" onClick={handleSave} className="flex-1">
               <Save className="h-3 w-3" />
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="flex-1">
+            <Button size="sm" variant="outline" onClick={handleCancel} className="flex-1">
               <X className="h-3 w-3" />
             </Button>
           </div>
@@ -76,9 +88,9 @@ const ObjectNode = ({ data, isConnectable }: { data: NodeData; isConnectable: bo
       ) : (
         <div className="space-y-2">
           <div className="text-xs text-muted-foreground break-all">
-            {typeof data.value === 'object' ? JSON.stringify(data.value) : String(data.value)}
+            {typeof data.value === 'object' ? JSON.stringify(data.value) : String(data.value || '')}
           </div>
-          <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="w-full">
+          <Button size="sm" variant="outline" onClick={handleEdit} className="w-full">
             <Edit3 className="h-3 w-3 mr-1" />
             Edit
           </Button>
@@ -92,18 +104,29 @@ const ObjectNode = ({ data, isConnectable }: { data: NodeData; isConnectable: bo
 
 const ArrayNode = ({ data, isConnectable }: { data: NodeData; isConnectable: boolean }) => {
   const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(JSON.stringify(data.value || [], null, 2))
+  const [editValue, setEditValue] = useState(JSON.stringify(data?.value || [], null, 2))
 
-  const handleSave = () => {
+  const handleSave = useCallback(() => {
     try {
       const parsed = JSON.parse(editValue)
-      data.onChange(data.label, parsed)
+      if (data?.onChange) {
+        data.onChange(data.label || '', parsed)
+      }
       setIsEditing(false)
     } catch (error) {
-      // Handle invalid JSON
       console.error('Invalid JSON:', error)
     }
-  }
+  }, [data, editValue])
+
+  const handleCancel = useCallback(() => {
+    setIsEditing(false)
+  }, [])
+
+  const handleEdit = useCallback(() => {
+    setIsEditing(true)
+  }, [])
+
+  if (!data) return null
 
   return (
     <div className="bg-card border rounded-lg shadow-lg p-3 min-w-[200px] border-blue-200">
@@ -113,7 +136,7 @@ const ArrayNode = ({ data, isConnectable }: { data: NodeData; isConnectable: boo
         <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
           array
         </Badge>
-        <span className="text-sm font-medium">{data.label}</span>
+        <span className="text-sm font-medium">{data.label || 'Unknown'}</span>
       </div>
 
       {isEditing ? (
@@ -128,7 +151,7 @@ const ArrayNode = ({ data, isConnectable }: { data: NodeData; isConnectable: boo
             <Button size="sm" onClick={handleSave} className="flex-1">
               <Save className="h-3 w-3" />
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="flex-1">
+            <Button size="sm" variant="outline" onClick={handleCancel} className="flex-1">
               <X className="h-3 w-3" />
             </Button>
           </div>
@@ -138,7 +161,7 @@ const ArrayNode = ({ data, isConnectable }: { data: NodeData; isConnectable: boo
           <div className="text-xs text-muted-foreground">
             [{Array.isArray(data.value) ? data.value.length : 0} items]
           </div>
-          <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="w-full">
+          <Button size="sm" variant="outline" onClick={handleEdit} className="w-full">
             <Edit3 className="h-3 w-3 mr-1" />
             Edit Array
           </Button>
@@ -152,12 +175,24 @@ const ArrayNode = ({ data, isConnectable }: { data: NodeData; isConnectable: boo
 
 const ValueNode = ({ data, isConnectable }: { data: NodeData; isConnectable: boolean }) => {
   const [isEditing, setIsEditing] = useState(false)
-  const [editValue, setEditValue] = useState(String(data.value || ''))
+  const [editValue, setEditValue] = useState(String(data?.value || ''))
 
-  const handleSave = () => {
-    data.onChange(data.label, editValue)
+  const handleSave = useCallback(() => {
+    if (data?.onChange) {
+      data.onChange(data.label || '', editValue)
+    }
     setIsEditing(false)
-  }
+  }, [data, editValue])
+
+  const handleCancel = useCallback(() => {
+    setIsEditing(false)
+  }, [])
+
+  const handleEdit = useCallback(() => {
+    setIsEditing(true)
+  }, [])
+
+  if (!data) return null
 
   return (
     <div className="bg-card border rounded-lg shadow-lg p-3 min-w-[150px] border-green-200">
@@ -165,9 +200,9 @@ const ValueNode = ({ data, isConnectable }: { data: NodeData; isConnectable: boo
       
       <div className="flex items-center gap-2 mb-2">
         <Badge variant="outline" className="text-xs bg-green-50 text-green-700">
-          {data.type}
+          {data.type || 'value'}
         </Badge>
-        <span className="text-sm font-medium">{data.label}</span>
+        <span className="text-sm font-medium">{data.label || 'Unknown'}</span>
       </div>
 
       {isEditing ? (
@@ -182,7 +217,7 @@ const ValueNode = ({ data, isConnectable }: { data: NodeData; isConnectable: boo
             <Button size="sm" onClick={handleSave} className="flex-1">
               <Save className="h-3 w-3" />
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="flex-1">
+            <Button size="sm" variant="outline" onClick={handleCancel} className="flex-1">
               <X className="h-3 w-3" />
             </Button>
           </div>
@@ -190,9 +225,9 @@ const ValueNode = ({ data, isConnectable }: { data: NodeData; isConnectable: boo
       ) : (
         <div className="space-y-2">
           <div className="text-xs text-muted-foreground break-all">
-            {String(data.value)}
+            {String(data.value || '')}
           </div>
-          <Button size="sm" variant="outline" onClick={() => setIsEditing(true)} className="w-full">
+          <Button size="sm" variant="outline" onClick={handleEdit} className="w-full">
             <Edit3 className="h-3 w-3 mr-1" />
             Edit
           </Button>
@@ -210,7 +245,7 @@ const nodeTypes: NodeTypes = {
   value: ValueNode,
 }
 
-// Custom Controls Component
+// Safe Custom Controls Component
 const CustomControls = () => {
   const { zoomIn, zoomOut, fitView, setViewport, getViewport } = useReactFlow()
   const [zoomLevel, setZoomLevel] = useState(1)
@@ -218,8 +253,12 @@ const CustomControls = () => {
   // Update zoom level when viewport changes
   useEffect(() => {
     const updateZoomLevel = () => {
-      const viewport = getViewport()
-      setZoomLevel(Math.round(viewport.zoom * 100) / 100)
+      try {
+        const viewport = getViewport()
+        setZoomLevel(Math.round(viewport.zoom * 100) / 100)
+      } catch (error) {
+        console.error('Error updating zoom level:', error)
+      }
     }
 
     // Update immediately
@@ -230,22 +269,38 @@ const CustomControls = () => {
     return () => clearInterval(interval)
   }, [getViewport])
 
-  const handleZoomIn = () => {
-    zoomIn({ duration: 300 })
-  }
+  const handleZoomIn = useCallback(() => {
+    try {
+      zoomIn({ duration: 300 })
+    } catch (error) {
+      console.error('Error zooming in:', error)
+    }
+  }, [zoomIn])
 
-  const handleZoomOut = () => {
-    zoomOut({ duration: 300 })
-  }
+  const handleZoomOut = useCallback(() => {
+    try {
+      zoomOut({ duration: 300 })
+    } catch (error) {
+      console.error('Error zooming out:', error)
+    }
+  }, [zoomOut])
 
-  const handleFitView = () => {
-    fitView({ duration: 300, padding: 0.1 })
-  }
+  const handleFitView = useCallback(() => {
+    try {
+      fitView({ duration: 300, padding: 0.1 })
+    } catch (error) {
+      console.error('Error fitting view:', error)
+    }
+  }, [fitView])
 
-  const handleFullScreen = () => {
-    // Reset to default view
-    setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 300 })
-  }
+  const handleFullScreen = useCallback(() => {
+    try {
+      // Reset to default view
+      setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 300 })
+    } catch (error) {
+      console.error('Error resetting view:', error)
+    }
+  }, [setViewport])
 
   return (
     <div className="absolute bottom-4 left-4 flex flex-col gap-2 bg-background/90 backdrop-blur-sm border rounded-lg p-2 shadow-lg z-10">
@@ -292,26 +347,6 @@ const CustomControls = () => {
   )
 }
 
-// Custom MiniMap Component
-const CustomMiniMap = () => {
-  return (
-    <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm border rounded-lg p-2 shadow-lg z-10">
-      <div className="text-xs text-muted-foreground mb-2 font-medium">Mini Map</div>
-      <div className="w-32 h-24 bg-slate-900 rounded border overflow-hidden">
-        <MiniMap
-          nodeColor="#3b82f6"
-          nodeStrokeColor="#1e40af"
-          nodeStrokeWidth={2}
-          maskColor="rgba(0, 0, 0, 0.3)"
-          className="w-full h-full"
-          zoomable={true}
-          pannable={true}
-        />
-      </div>
-    </div>
-  )
-}
-
 // Utility functions
 function generateId(): string {
   return Math.random().toString(36).substr(2, 9)
@@ -338,16 +373,16 @@ function convertJsonToNodes(jsonData: unknown, parentId?: string, onContentChang
       value,
       type: typeof value,
       level,
-              onChange: (nodeId: string, newValue: unknown) => {
-          // Handle value change
-          console.log('Value changed:', nodeId, newValue)
-          // TODO: Implement content change propagation
-          if (onContentChange && fileId) {
-            // For now, just log the change. In a real implementation,
-            // you would update the JSON structure and call onContentChange
-            console.log('Content change would be propagated:', fileId, newValue)
-          }
+      onChange: (nodeId: string, newValue: unknown) => {
+        // Handle value change
+        console.log('Value changed:', nodeId, newValue)
+        // TODO: Implement content change propagation
+        if (onContentChange && fileId) {
+          // For now, just log the change. In a real implementation,
+          // you would update the JSON structure and call onContentChange
+          console.log('Content change would be propagated:', fileId, newValue)
         }
+      }
     }
     
     nodes.push({
@@ -398,90 +433,95 @@ function convertJsonToNodes(jsonData: unknown, parentId?: string, onContentChang
 
 // Layout utility functions
 function calculateHierarchicalLayout(nodes: Node[], edges: Edge[]) {
-  // Create adjacency lists
-  const children = new Map<string, string[]>()
-  const parents = new Map<string, string>()
-  
-  // Initialize children map
-  nodes.forEach(node => {
-    children.set(node.id, [])
-  })
-  
-  // Build parent-child relationships
-  edges.forEach(edge => {
-    const childList = children.get(edge.source) || []
-    childList.push(edge.target)
-    children.set(edge.source, childList)
-    parents.set(edge.target, edge.source)
-  })
-  
-  // Find root nodes (nodes with no parents)
-  const rootNodes = nodes.filter(node => !parents.has(node.id))
-  
-  // Calculate positions using tree layout
-  const nodePositions = new Map<string, { x: number, y: number }>()
-  const levelHeight = 200
-  const nodeSpacing = 300
-  
-  // Calculate subtree widths for proper centering
-  const subtreeWidths = new Map<string, number>()
-  
-  function calculateSubtreeWidth(nodeId: string): number {
-    const nodeChildren = children.get(nodeId) || []
-    if (nodeChildren.length === 0) {
-      return nodeSpacing
-    }
+  try {
+    // Create adjacency lists
+    const children = new Map<string, string[]>()
+    const parents = new Map<string, string>()
     
-    let totalWidth = 0
-    nodeChildren.forEach(childId => {
-      totalWidth += calculateSubtreeWidth(childId)
+    // Initialize children map
+    nodes.forEach(node => {
+      children.set(node.id, [])
     })
     
-    subtreeWidths.set(nodeId, totalWidth)
-    return totalWidth
-  }
-  
-  // Calculate widths for all root nodes
-  rootNodes.forEach(rootNode => {
-    calculateSubtreeWidth(rootNode.id)
-  })
-  
-  function layoutNode(nodeId: string, level: number, xOffset: number): number {
-    const nodeChildren = children.get(nodeId) || []
-    const nodeWidth = subtreeWidths.get(nodeId) || nodeSpacing
+    // Build parent-child relationships
+    edges.forEach(edge => {
+      const childList = children.get(edge.source) || []
+      childList.push(edge.target)
+      children.set(edge.source, childList)
+      parents.set(edge.target, edge.source)
+    })
     
-    // Position current node
-    const x = xOffset + nodeWidth / 2
-    const y = level * levelHeight + 100
-    nodePositions.set(nodeId, { x, y })
+    // Find root nodes (nodes with no parents)
+    const rootNodes = nodes.filter(node => !parents.has(node.id))
     
-    // Position children
-    if (nodeChildren.length > 0) {
-      let childXOffset = xOffset
+    // Calculate positions using tree layout
+    const nodePositions = new Map<string, { x: number, y: number }>()
+    const levelHeight = 200
+    const nodeSpacing = 300
+    
+    // Calculate subtree widths for proper centering
+    const subtreeWidths = new Map<string, number>()
+    
+    function calculateSubtreeWidth(nodeId: string): number {
+      const nodeChildren = children.get(nodeId) || []
+      if (nodeChildren.length === 0) {
+        return nodeSpacing
+      }
+      
+      let totalWidth = 0
       nodeChildren.forEach(childId => {
-        childXOffset += layoutNode(childId, level + 1, childXOffset)
+        totalWidth += calculateSubtreeWidth(childId)
       })
+      
+      subtreeWidths.set(nodeId, totalWidth)
+      return totalWidth
     }
     
-    return nodeWidth
-  }
-  
-  // Layout each root node
-  let currentXOffset = 0
-  rootNodes.forEach(rootNode => {
-    const width = subtreeWidths.get(rootNode.id) || nodeSpacing
-    layoutNode(rootNode.id, 0, currentXOffset)
-    currentXOffset += width
-  })
-  
-  // Update node positions
-  return nodes.map(node => {
-    const position = nodePositions.get(node.id)
-    if (position) {
-      return { ...node, position }
+    // Calculate widths for all root nodes
+    rootNodes.forEach(rootNode => {
+      calculateSubtreeWidth(rootNode.id)
+    })
+    
+    function layoutNode(nodeId: string, level: number, xOffset: number): number {
+      const nodeChildren = children.get(nodeId) || []
+      const nodeWidth = subtreeWidths.get(nodeId) || nodeSpacing
+      
+      // Position current node
+      const x = xOffset + nodeWidth / 2
+      const y = level * levelHeight + 100
+      nodePositions.set(nodeId, { x, y })
+      
+      // Position children
+      if (nodeChildren.length > 0) {
+        let childXOffset = xOffset
+        nodeChildren.forEach(childId => {
+          childXOffset += layoutNode(childId, level + 1, childXOffset)
+        })
+      }
+      
+      return nodeWidth
     }
-    return node
-  })
+    
+    // Layout each root node
+    let currentXOffset = 0
+    rootNodes.forEach(rootNode => {
+      const width = subtreeWidths.get(rootNode.id) || nodeSpacing
+      layoutNode(rootNode.id, 0, currentXOffset)
+      currentXOffset += width
+    })
+    
+    // Update node positions
+    return nodes.map(node => {
+      const position = nodePositions.get(node.id)
+      if (position) {
+        return { ...node, position }
+      }
+      return node
+    })
+  } catch (error) {
+    console.error('Error in layout calculation:', error)
+    return nodes
+  }
 }
 
 export function NodeBasedJSONEditor({ file, onContentChange }: JSONEditorProps) {
@@ -489,80 +529,146 @@ export function NodeBasedJSONEditor({ file, onContentChange }: JSONEditorProps) 
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
   const [selectedNode, setSelectedNode] = useState<Node | null>(null)
+  const [isLayouting, setIsLayouting] = useState(false)
 
-  // Convert JSON to nodes on mount
-  useMemo(() => {
+  // Memoize the JSON conversion to avoid unnecessary recalculations
+  const { nodes: initialNodes, edges: initialEdges } = useMemo(() => {
     try {
-      const { nodes: initialNodes, edges: initialEdges } = convertJsonToNodes(file.content, undefined, onContentChange, file.id)
-      setNodes(initialNodes)
-      setEdges(initialEdges)
-      setIsValid(true)
+      if (!file?.content) {
+        setIsValid(false)
+        return { nodes: [], edges: [] }
+      }
       
-      // Auto-layout after a short delay to ensure nodes are set
-      setTimeout(() => {
-        setNodes((currentNodes) => {
-          const layoutedNodes = calculateHierarchicalLayout(currentNodes, initialEdges)
-          return layoutedNodes
-        })
-      }, 100)
+      const result = convertJsonToNodes(file.content, undefined, onContentChange, file.id)
+      setIsValid(true)
+      return result
     } catch (error) {
       setIsValid(false)
       console.error('Invalid JSON:', error)
+      return { nodes: [], edges: [] }
     }
-  }, [file.content, setNodes, setEdges, onContentChange])
+  }, [file?.content, file?.id, onContentChange])
+
+  // Update nodes and edges when file content changes
+  useEffect(() => {
+    try {
+      if (isValid && initialNodes && initialEdges) {
+        setNodes(initialNodes)
+        setEdges(initialEdges)
+        
+        // Apply layout immediately for better responsiveness
+        if (initialNodes.length > 0) {
+          setIsLayouting(true)
+          try {
+            const layoutedNodes = calculateHierarchicalLayout(initialNodes, initialEdges)
+            setNodes(layoutedNodes)
+          } catch (error) {
+            console.error('Layout calculation error:', error)
+            // Fallback to original nodes if layout fails
+            setNodes(initialNodes)
+          } finally {
+            setIsLayouting(false)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error updating nodes and edges:', error)
+    }
+  }, [initialNodes, initialEdges, isValid, setNodes, setEdges])
 
   const onConnect = useCallback((params: Connection) => {
-    setEdges((eds) => addEdge(params, eds))
+    try {
+      setEdges((eds) => addEdge(params, eds))
+    } catch (error) {
+      console.error('Error connecting nodes:', error)
+    }
   }, [setEdges])
 
   const onNodeClick = useCallback((_event: unknown, node: Node) => {
-    setSelectedNode(node)
+    try {
+      setSelectedNode(node)
+    } catch (error) {
+      console.error('Error selecting node:', error)
+    }
   }, [])
 
   // Auto-layout function
   const autoLayout = useCallback(() => {
-    setNodes((currentNodes) => {
-      const layoutedNodes = calculateHierarchicalLayout(currentNodes, edges)
-      return layoutedNodes
-    })
-  }, [setNodes, edges])
+    try {
+      if (!nodes || nodes.length === 0) return
+      
+      setIsLayouting(true)
+      const layoutedNodes = calculateHierarchicalLayout(nodes, edges)
+      setNodes(layoutedNodes)
+    } catch (error) {
+      console.error('Auto layout error:', error)
+    } finally {
+      setIsLayouting(false)
+    }
+  }, [nodes, edges, setNodes])
 
   const addNewNode = useCallback(() => {
-    const newNode: Node = {
-      id: generateId(),
-      type: 'value',
-      position: { x: Math.random() * 400, y: Math.random() * 300 },
-      data: {
-        label: 'New Node',
-        value: '',
-        type: 'string',
-        onChange: (nodeId: string, newValue: unknown) => {
-          setNodes((nds) =>
-            nds.map((node) =>
-              node.id === nodeId
-                ? { ...node, data: { ...node.data, value: newValue } }
-                : node
+    try {
+      const newNode: Node = {
+        id: generateId(),
+        type: 'value',
+        position: { x: Math.random() * 400, y: Math.random() * 300 },
+        data: {
+          label: 'New Node',
+          value: '',
+          type: 'string',
+          onChange: (nodeId: string, newValue: unknown) => {
+            setNodes((nds) =>
+              nds.map((node) =>
+                node.id === nodeId
+                  ? { ...node, data: { ...node.data, value: newValue } }
+                  : node
+              )
             )
-          )
+          }
         }
       }
+      setNodes((nds) => [...nds, newNode])
+    } catch (error) {
+      console.error('Error adding new node:', error)
     }
-    setNodes((nds) => [...nds, newNode])
   }, [setNodes])
 
   const deleteSelectedNode = useCallback(() => {
-    if (selectedNode) {
-      setNodes((nds) => nds.filter((node) => node.id !== selectedNode.id))
-      setEdges((eds) => eds.filter((edge) => edge.source !== selectedNode.id && edge.target !== selectedNode.id))
-      setSelectedNode(null)
+    try {
+      if (selectedNode) {
+        setNodes((nds) => nds.filter((node) => node.id !== selectedNode.id))
+        setEdges((eds) => eds.filter((edge) => edge.source !== selectedNode.id && edge.target !== selectedNode.id))
+        setSelectedNode(null)
+      }
+    } catch (error) {
+      console.error('Error deleting selected node:', error)
     }
   }, [selectedNode, setNodes, setEdges])
 
-  const getFileSize = () => {
-    const size = JSON.stringify(file.content).length
-    if (size < 1024) return `${size} B`
-    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
-    return `${(size / (1024 * 1024)).toFixed(1)} MB`
+  const getFileSize = useCallback(() => {
+    try {
+      const size = JSON.stringify(file?.content || {}).length
+      if (size < 1024) return `${size} B`
+      if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+      return `${(size / (1024 * 1024)).toFixed(1)} MB`
+    } catch {
+      return '0 B'
+    }
+  }, [file?.content])
+
+  // Early return if no file
+  if (!file) {
+    return (
+      <Card>
+        <CardContent className="flex items-center justify-center h-64">
+          <div className="text-center text-muted-foreground">
+            <AlertCircle className="h-8 w-8 mx-auto mb-2 text-destructive" />
+            <p className="text-sm">No file selected</p>
+          </div>
+        </CardContent>
+      </Card>
+    )
   }
 
   return (
@@ -571,7 +677,7 @@ export function NodeBasedJSONEditor({ file, onContentChange }: JSONEditorProps) 
         <CardTitle className="flex items-center justify-between text-sm sm:text-base">
           <div className="flex items-center gap-2 min-w-0">
             <Code className="h-4 w-4 flex-shrink-0" />
-            <span className="truncate">{file.name}</span>
+            <span className="truncate">{file.name || 'Unknown File'}</span>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {file.isModified && (
@@ -603,8 +709,8 @@ export function NodeBasedJSONEditor({ file, onContentChange }: JSONEditorProps) 
         {isValid ? (
           <div className="h-[calc(100vh-200px)] w-full min-h-[600px]">
             <ReactFlow
-              nodes={nodes}
-              edges={edges}
+              nodes={nodes || []}
+              edges={edges || []}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
@@ -620,9 +726,26 @@ export function NodeBasedJSONEditor({ file, onContentChange }: JSONEditorProps) 
               zoomOnScroll={true}
               zoomOnPinch={true}
               panOnScroll={false}
+              nodesDraggable={true}
+              nodesConnectable={true}
+              elementsSelectable={true}
+              selectNodesOnDrag={false}
+              multiSelectionKeyCode="Shift"
+              deleteKeyCode="Delete"
+              snapToGrid={false}
+              snapGrid={[15, 15]}
+              defaultEdgeOptions={{ type: 'smoothstep' }}
             >
               <CustomControls />
-              <CustomMiniMap />
+              <MiniMap
+                nodeColor="#3b82f6"
+                nodeStrokeColor="#1e40af"
+                nodeStrokeWidth={2}
+                maskColor="rgba(0, 0, 0, 0.3)"
+                className="w-32 h-24"
+                zoomable={true}
+                pannable={true}
+              />
               <Background variant={BackgroundVariant.Dots} gap={12} size={1} />
               
               <Panel position="top-left" className="bg-background/80 backdrop-blur-sm border rounded-lg p-2">
@@ -631,9 +754,9 @@ export function NodeBasedJSONEditor({ file, onContentChange }: JSONEditorProps) 
                     <Plus className="h-4 w-4 mr-1" />
                     Add Node
                   </Button>
-                  <Button size="sm" variant="outline" onClick={autoLayout}>
+                  <Button size="sm" variant="outline" onClick={autoLayout} disabled={isLayouting}>
                     <Layout className="h-4 w-4 mr-1" />
-                    Auto Layout
+                    {isLayouting ? 'Layouting...' : 'Auto Layout'}
                   </Button>
                   {selectedNode && (
                     <Button size="sm" variant="destructive" onClick={deleteSelectedNode}>
@@ -646,7 +769,7 @@ export function NodeBasedJSONEditor({ file, onContentChange }: JSONEditorProps) 
 
               <Panel position="top-right" className="bg-background/80 backdrop-blur-sm border rounded-lg p-2">
                 <div className="text-xs text-muted-foreground">
-                  {nodes.length} nodes, {edges.length} connections
+                  {nodes?.length || 0} nodes, {edges?.length || 0} connections
                 </div>
               </Panel>
             </ReactFlow>
