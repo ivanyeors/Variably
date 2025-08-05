@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import {
   ReactFlow,
   MiniMap,
@@ -27,7 +27,7 @@ import { AlertCircle, CheckCircle, Code, Plus, Trash2, Edit3, Save, X, Layout, Z
 import type { JSONEditorProps } from "@/types/json-editor"
 
 // Node data interface
-interface NodeData {
+interface NodeData extends Record<string, unknown> {
   label: string
   value: unknown
   type: string
@@ -212,15 +212,51 @@ const nodeTypes: NodeTypes = {
 
 // Custom Controls Component
 const CustomControls = () => {
-  const { zoomIn, zoomOut, fitView } = useReactFlow()
+  const { zoomIn, zoomOut, fitView, setViewport, getViewport } = useReactFlow()
+  const [zoomLevel, setZoomLevel] = useState(1)
+
+  // Update zoom level when viewport changes
+  useEffect(() => {
+    const updateZoomLevel = () => {
+      const viewport = getViewport()
+      setZoomLevel(Math.round(viewport.zoom * 100) / 100)
+    }
+
+    // Update immediately
+    updateZoomLevel()
+
+    // Set up interval to update zoom level
+    const interval = setInterval(updateZoomLevel, 100)
+    return () => clearInterval(interval)
+  }, [getViewport])
+
+  const handleZoomIn = () => {
+    zoomIn({ duration: 300 })
+  }
+
+  const handleZoomOut = () => {
+    zoomOut({ duration: 300 })
+  }
+
+  const handleFitView = () => {
+    fitView({ duration: 300, padding: 0.1 })
+  }
+
+  const handleFullScreen = () => {
+    // Reset to default view
+    setViewport({ x: 0, y: 0, zoom: 1 }, { duration: 300 })
+  }
 
   return (
-    <div className="absolute bottom-4 left-4 flex flex-col gap-2 bg-background/80 backdrop-blur-sm border rounded-lg p-2 shadow-lg">
+    <div className="absolute bottom-4 left-4 flex flex-col gap-2 bg-background/90 backdrop-blur-sm border rounded-lg p-2 shadow-lg z-10">
+      <div className="text-center text-xs text-muted-foreground mb-1">
+        {Math.round(zoomLevel * 100)}%
+      </div>
       <Button
         size="sm"
         variant="outline"
-        onClick={() => zoomIn()}
-        className="h-8 w-8 p-0"
+        onClick={handleZoomIn}
+        className="h-8 w-8 p-0 hover:bg-accent"
         title="Zoom In"
       >
         <ZoomIn className="h-4 w-4" />
@@ -228,8 +264,8 @@ const CustomControls = () => {
       <Button
         size="sm"
         variant="outline"
-        onClick={() => zoomOut()}
-        className="h-8 w-8 p-0"
+        onClick={handleZoomOut}
+        className="h-8 w-8 p-0 hover:bg-accent"
         title="Zoom Out"
       >
         <ZoomOut className="h-4 w-4" />
@@ -237,11 +273,20 @@ const CustomControls = () => {
       <Button
         size="sm"
         variant="outline"
-        onClick={() => fitView()}
-        className="h-8 w-8 p-0"
+        onClick={handleFitView}
+        className="h-8 w-8 p-0 hover:bg-accent"
         title="Fit View"
       >
         <Maximize2 className="h-4 w-4" />
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={handleFullScreen}
+        className="h-8 w-8 p-0 hover:bg-accent"
+        title="Reset View"
+      >
+        <Layout className="h-4 w-4" />
       </Button>
     </div>
   )
@@ -250,15 +295,17 @@ const CustomControls = () => {
 // Custom MiniMap Component
 const CustomMiniMap = () => {
   return (
-    <div className="absolute bottom-4 right-4 bg-background/80 backdrop-blur-sm border rounded-lg p-2 shadow-lg">
+    <div className="absolute bottom-4 right-4 bg-background/90 backdrop-blur-sm border rounded-lg p-2 shadow-lg z-10">
       <div className="text-xs text-muted-foreground mb-2 font-medium">Mini Map</div>
-      <div className="w-24 h-18 bg-slate-900 rounded border overflow-hidden">
+      <div className="w-32 h-24 bg-slate-900 rounded border overflow-hidden">
         <MiniMap
           nodeColor="#3b82f6"
           nodeStrokeColor="#1e40af"
           nodeStrokeWidth={2}
           maskColor="rgba(0, 0, 0, 0.3)"
           className="w-full h-full"
+          zoomable={true}
+          pannable={true}
         />
       </div>
     </div>
@@ -270,7 +317,7 @@ function generateId(): string {
   return Math.random().toString(36).substr(2, 9)
 }
 
-function convertJsonToNodes(jsonData: unknown, parentId?: string): { nodes: Node[], edges: Edge[] } {
+function convertJsonToNodes(jsonData: unknown, parentId?: string, onContentChange?: (fileId: string, content: unknown) => void, fileId?: string): { nodes: Node[], edges: Edge[] } {
   const nodes: Node[] = []
   const edges: Edge[] = []
   let nodeId = 0
@@ -281,25 +328,33 @@ function convertJsonToNodes(jsonData: unknown, parentId?: string): { nodes: Node
     
     // Use a more organized initial positioning
     const parentNode = nodes.find(n => n.id === parent)
-    const parentLevel = parentNode ? (parentNode.data as NodeData & { level?: number })?.level || 0 : 0
+    const parentLevel = parentNode ? (parentNode.data as NodeData)?.level || 0 : 0
     const level = parent ? parentLevel + 1 : 0
     const x = level * 400 + 200
     const y = (nodeId - 1) * 230 + 200
+    
+    const nodeData: NodeData = {
+      label: key,
+      value,
+      type: typeof value,
+      level,
+              onChange: (nodeId: string, newValue: unknown) => {
+          // Handle value change
+          console.log('Value changed:', nodeId, newValue)
+          // TODO: Implement content change propagation
+          if (onContentChange && fileId) {
+            // For now, just log the change. In a real implementation,
+            // you would update the JSON structure and call onContentChange
+            console.log('Content change would be propagated:', fileId, newValue)
+          }
+        }
+    }
     
     nodes.push({
       id,
       type,
       position: { x, y },
-      data: {
-        label: key,
-        value,
-        type: typeof value,
-        level,
-        onChange: (nodeId: string, newValue: unknown) => {
-          // Handle value change
-          console.log('Value changed:', nodeId, newValue)
-        }
-      }
+      data: nodeData
     })
 
     if (parent) {
@@ -429,7 +484,7 @@ function calculateHierarchicalLayout(nodes: Node[], edges: Edge[]) {
   })
 }
 
-export function NodeBasedJSONEditor({ file }: JSONEditorProps) {
+export function NodeBasedJSONEditor({ file, onContentChange }: JSONEditorProps) {
   const [isValid, setIsValid] = useState(true)
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
@@ -438,7 +493,7 @@ export function NodeBasedJSONEditor({ file }: JSONEditorProps) {
   // Convert JSON to nodes on mount
   useMemo(() => {
     try {
-      const { nodes: initialNodes, edges: initialEdges } = convertJsonToNodes(file.content)
+      const { nodes: initialNodes, edges: initialEdges } = convertJsonToNodes(file.content, undefined, onContentChange, file.id)
       setNodes(initialNodes)
       setEdges(initialEdges)
       setIsValid(true)
@@ -454,7 +509,7 @@ export function NodeBasedJSONEditor({ file }: JSONEditorProps) {
       setIsValid(false)
       console.error('Invalid JSON:', error)
     }
-  }, [file.content, setNodes, setEdges])
+  }, [file.content, setNodes, setEdges, onContentChange])
 
   const onConnect = useCallback((params: Connection) => {
     setEdges((eds) => addEdge(params, eds))
@@ -555,13 +610,16 @@ export function NodeBasedJSONEditor({ file }: JSONEditorProps) {
               onConnect={onConnect}
               onNodeClick={onNodeClick}
               nodeTypes={nodeTypes}
-              fitView
+              fitView={false}
               className="bg-background"
               fitViewOptions={{ padding: 0.1 }}
               minZoom={0.1}
-              maxZoom={2}
+              maxZoom={3}
               defaultViewport={{ x: 0, y: 0, zoom: 1 }}
               proOptions={{ hideAttribution: true }}
+              zoomOnScroll={true}
+              zoomOnPinch={true}
+              panOnScroll={false}
             >
               <CustomControls />
               <CustomMiniMap />

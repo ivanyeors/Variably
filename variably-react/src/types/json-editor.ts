@@ -7,6 +7,14 @@ export interface JSONFile {
     originalContent: any;
     isModified: boolean;
     size: number;
+    // New properties for manifest.json support
+    isManifest?: boolean;
+    dependencies?: string[]; // Files this file depends on
+    dependents?: string[]; // Files that depend on this file
+    manifestData?: {
+      files: string[];
+      dependencies: Record<string, string[]>;
+    };
   }
   
   export interface FileDropZoneProps {

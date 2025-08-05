@@ -2,7 +2,7 @@
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { X, FileJson, AlertCircle, FolderTree, ChevronRight, ChevronDown, Folder, FileText, Upload } from "lucide-react"
+import { X, FileJson, AlertCircle, FolderTree, ChevronRight, ChevronDown, Folder, FileText, Upload, Package } from "lucide-react"
 import type { FileListProps } from "@/types/json-editor"
 import { useState } from "react"
 import type { RefObject } from "react"
@@ -238,10 +238,19 @@ export function FileList({
                 onClick={() => onFileSelect(file.id)}
               >
                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                  <FileJson className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  {file.isManifest ? (
+                    <Package className="h-4 w-4 flex-shrink-0 text-orange-500" />
+                  ) : (
+                    <FileJson className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+                  )}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
                       <span className="truncate font-medium">{file.name}</span>
+                      {file.isManifest && (
+                        <Badge variant="outline" className="text-xs px-1.5 py-0.5 bg-orange-50 text-orange-700 border-orange-200">
+                          Manifest
+                        </Badge>
+                      )}
                       {hasErrors && (
                         <AlertCircle className="h-3 w-3 flex-shrink-0 text-destructive" />
                       )}
@@ -252,6 +261,18 @@ export function FileList({
                         <>
                           <span>•</span>
                           <span className="text-primary font-medium">Modified</span>
+                        </>
+                      )}
+                      {file.dependencies && file.dependencies.length > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className="text-blue-600 font-medium">{file.dependencies.length} deps</span>
+                        </>
+                      )}
+                      {file.dependents && file.dependents.length > 0 && (
+                        <>
+                          <span>•</span>
+                          <span className="text-green-600 font-medium">{file.dependents.length} dependents</span>
                         </>
                       )}
                     </div>
@@ -296,6 +317,8 @@ export function FileList({
           </div>
         )}
       </TabsContent>
+      
+
     </Tabs>
   )
 }

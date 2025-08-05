@@ -33,6 +33,7 @@ export function FileDropZone() {
   const processFiles = useCallback(async (fileList: FileList): Promise<JSONFile[]> => {
     const jsonFiles: JSONFile[] = []
     const errors: string[] = []
+    let manifestFile: JSONFile | null = null
     
     for (const file of Array.from(fileList)) {
       if (file.type === 'application/json' || file.name.endsWith('.json')) {
@@ -40,7 +41,7 @@ export function FileDropZone() {
           const content = await file.text()
           const parsedContent = JSON.parse(content)
           
-          jsonFiles.push({
+          const jsonFile: JSONFile = {
             id: crypto.randomUUID(),
             name: file.name,
             path: file.webkitRelativePath || file.name,
@@ -48,12 +49,26 @@ export function FileDropZone() {
             originalContent: parsedContent,
             isModified: false,
             size: file.size
-          })
+          }
+          
+          // Check if this is a manifest.json file
+          if (file.name.toLowerCase() === 'manifest.json') {
+            jsonFile.isManifest = true
+            jsonFile.manifestData = parseManifestData(parsedContent)
+            manifestFile = jsonFile
+          }
+          
+          jsonFiles.push(jsonFile)
         } catch (error) {
           console.error(`Error processing ${file.name}:`, error)
           errors.push(file.name)
         }
       }
+    }
+    
+    // If we found a manifest file, process relationships
+    if (manifestFile && manifestFile.manifestData) {
+      processFileRelationships(jsonFiles, manifestFile.manifestData)
     }
     
     if (errors.length > 0) {
@@ -62,6 +77,74 @@ export function FileDropZone() {
     
     return jsonFiles
   }, [])
+
+  // Helper function to parse manifest.json data
+  const parseManifestData = (manifestContent: any) => {
+    const files: string[] = []
+    const dependencies: Record<string, string[]> = {}
+    
+    // Extract files from common manifest.json patterns
+    if (manifestContent.files && Array.isArray(manifestContent.files)) {
+      files.push(...manifestContent.files)
+    }
+    
+    if (manifestContent.dependencies && typeof manifestContent.dependencies === 'object') {
+      Object.entries(manifestContent.dependencies).forEach(([file, deps]) => {
+        if (Array.isArray(deps)) {
+          dependencies[file] = deps
+        }
+      })
+    }
+    
+    // Also check for other common patterns
+    if (manifestContent.include && Array.isArray(manifestContent.include)) {
+      files.push(...manifestContent.include)
+    }
+    
+    if (manifestContent.exclude && Array.isArray(manifestContent.exclude)) {
+      // Handle exclusions if needed
+    }
+    
+    return { files, dependencies }
+  }
+
+  // Helper function to process file relationships
+  const processFileRelationships = (files: JSONFile[], manifestData: { files: string[], dependencies: Record<string, string[]> }) => {
+    const fileMap = new Map<string, JSONFile>()
+    
+    // Create a map of files by name for easy lookup
+    files.forEach(file => {
+      fileMap.set(file.name, file)
+    })
+    
+    // Process dependencies
+    Object.entries(manifestData.dependencies).forEach(([fileName, deps]) => {
+      const file = fileMap.get(fileName)
+      if (file) {
+        file.dependencies = deps
+        
+        // Update dependents for each dependency
+        deps.forEach(depName => {
+          const depFile = fileMap.get(depName)
+          if (depFile) {
+            if (!depFile.dependents) {
+              depFile.dependents = []
+            }
+            depFile.dependents.push(fileName)
+          }
+        })
+      }
+    })
+    
+    // Mark files that are listed in manifest as related
+    manifestData.files.forEach(fileName => {
+      const file = fileMap.get(fileName)
+      if (file) {
+        // This file is part of the project structure
+        // Could add additional metadata here
+      }
+    })
+  }
 
   const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault()
@@ -96,14 +179,18 @@ export function FileDropZone() {
 
   const handleFileRemove = useCallback((fileId: string) => {
     const fileToRemove = files.find(f => f.id === fileId)
-    setFiles(prev => prev.filter(f => f.id !== fileId))
-    if (selectedFileId === fileId) {
-      setSelectedFileId(files.find(f => f.id !== fileId)?.id)
-    }
+    setFiles(prev => {
+      const updatedFiles = prev.filter(f => f.id !== fileId)
+      // If we're removing the selected file, select the first remaining file
+      if (selectedFileId === fileId && updatedFiles.length > 0) {
+        setSelectedFileId(updatedFiles[0].id)
+      }
+      return updatedFiles
+    })
     if (fileToRemove) {
       toast.success(`Removed ${fileToRemove.name}`)
     }
-  }, [selectedFileId, files])
+  }, [selectedFileId])
 
   const handleContentChange = useCallback((fileId: string, content: unknown) => {
     setFiles(prev => prev.map(file => 
@@ -622,17 +709,39 @@ export function FileDropZone() {
           ) : (
             /* File Editor Layout */
             <div className="flex-1 space-y-4 h-full">
-              {selectedFile ? (
+              {files.length > 0 ? (
                 editorType === 'node' ? (
-                  <NodeBasedJSONEditorWrapper
-                    file={selectedFile}
-                    onContentChange={handleContentChange}
-                  />
+                  selectedFile ? (
+                    <NodeBasedJSONEditorWrapper
+                      file={selectedFile}
+                      onContentChange={handleContentChange}
+                    />
+                  ) : (
+                    <Card className="h-96 flex items-center justify-center">
+                      <CardContent className="text-center">
+                        <FileJson className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground">
+                          Select a file from the sidebar to start editing
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )
                 ) : (
-                  <JSONEditor
-                    file={selectedFile}
-                    onContentChange={handleContentChange}
-                  />
+                  selectedFile ? (
+                    <JSONEditor
+                      file={selectedFile}
+                      onContentChange={handleContentChange}
+                    />
+                  ) : (
+                    <Card className="h-96 flex items-center justify-center">
+                      <CardContent className="text-center">
+                        <FileJson className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                        <p className="text-muted-foreground">
+                          Select a file from the sidebar to start editing
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )
                 )
               ) : (
                 <Card className="h-96 flex items-center justify-center">
